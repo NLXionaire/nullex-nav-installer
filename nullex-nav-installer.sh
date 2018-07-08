@@ -560,6 +560,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	## Update package lists, repositories and new software versions
 	#echo && echo "${CYAN}#####${NONE} Updating package lists, repositories and new software versions ${CYAN}#####${NONE}" && echo
 	#apt-get update -y && apt-get upgrade -y && echo
+	echo
 	
 	if [ "$SWAP" -eq 1 ]; then
 		# Install and configure disk swap file
