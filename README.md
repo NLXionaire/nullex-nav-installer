@@ -1,21 +1,30 @@
 # NulleX NAV Installer
 
-### Beta Release v0.9.5
-#### Currently untested on the NulleX mainnet due to Masternodes/Navs being unavailable until further notice. Also, until official wallet binaries are released, the wallet will not run without installing a number of required shared libraries
+### Beta Release v0.9.6
+#### IMPORTANT NOTE 1:
+The original default/fastest method of installing a NAV wallet is by using precompiled binaries but this ability has been temporarily disabled due to the fact that official binaries have not yet been released for the linux wallet. Therefore the install process is temporarily defaulted to building the wallet from source, which takes significantly much more time and uses more hard drive space, etc. The default will be reverted back to the faster install process as soon as proper binaries can be procured.
+
+#### IMPORTANT NOTE 2:
+The script was written with the ability to install multiple NAV's in parallel on the same VPS but it was recently discovered that the open source code used in the NulleX wallet specifically does not allow this configuration. If and when a solution to this problem is discovered, this script already contains full support for running multiple NAV's on the same VPS and will "just work" if the wallets themselves can be updated to get around this problem.
+
+## General information
 
 A custom masternode install script made from scratch specifically for installing Nullex NAVs.
 
 Currently, it must be run on Ubuntu Linux 16.04 and has been tested to work using VPS systems from vultr.com only but should be generic enough to run anywhere (Please let @NLXionaire know your experience in https://t.me/NullexOfficial if you have tried with another VPS provider).
 
-Since this script has the potential to install "extra" software components such as a firewall and/or create a swap disk file, root privileges are required to install properly. Therefore, you must either run the script using the '`sudo`' command prefix or else run directly as the root user (generally not recommended for security reasons but still supported).
+Since this script has the potential to install "extra" software components such as a firewall and/or create a swap disk file, root privileges are required to install properly. Therefore, you must either run the script using the `sudo` command prefix or else run directly as the root user (generally not recommended for security reasons but still supported).
 
 All wallets are installed to the /usr/local/bin directory.
+
+To save time on 2+ installs, the wallet binaries are archived in the wallet directory (typically /usr/local/bin/NulleX) after the first successful install and those locally stored files are then used to install subsequent wallet installs in much less time than the first.
 
 ## Features
 
 - Supports installing, updating or uninstalling up to 99 Nullex Nav installs on the same VPS
 - IPv4 and IPv6 support
 - Automatic update feature ensures you are always installing using the most up-to-date script
+- Install wallet from compiled binary files or build from source code
 - Faster syncing times for 2+ installs by copying previously installed blockchain files over to new installs
 - Automatic restart of installed Navs after reboot
 - Install additional setup components such as swap disk file, firewall configuration and brute-force protection
@@ -27,10 +36,9 @@ All wallets are installed to the /usr/local/bin directory.
 - Replace the wallet binaries with official versions
 - Enable blockchain sync monitoring once an official block explorer website is made available
 - Updating a previously installed wallet needs to remove previous settings before applying new settings
-- Updating a previously installed wallet needs to be smart enough to get the current configuration values so that options such as the masternode genkey value do not need to be re-entered every time
+- Updating a previously installed wallet needs to be smart enough to get the current configuration values instead of using 'new install' defaults
 - Properly shutdown all wallets automatically when a reboot or shutdown command is issued to prevent blockchain corruption
 - Automatically remove firewall rules for port(s) that pertain to a specific wallet install when the wallet is uninstalled
-- Add a new install type option to shutdown ALL installed wallets in a single command (useful when needing to reboot the VPS for any reason)
 
 ## Available Command-Line Options
 
@@ -44,9 +52,14 @@ All wallets are installed to the /usr/local/bin directory.
      Install type. There are 2 valid options: i = install (default), u = uninstall
      
      Usage Example: `sudo sh nullex-nav-installer.sh -t i`
+- -w or --wallet
+
+     Wallet type. There are 2 valid options: d = download (default), b = build from source
+     
+     Usage Example: `sudo sh nullex-nav-installer.sh -w b`
 - -g or --genkey
 
-     masternode genkey value (get this from your hot wallet by executing command '`masternode genkey`' from the Debug Console). This is REQUIRED for installation and the script will prompt for this value if not set via the command-line
+     The masternode genkey value. Generate this with the `masternode genkey` command either automatically from the VPS wallet (recommended) or from your hot wallet in the Debug Console). If left blank the value will be autogenerated
      
      Usage Example: `sudo sh nullex-nav-installer.sh -g 88pgtdc9rgiEFMarhuVAdDjeDBUiPbFPhqdafFsBUKcgS3XovPc`
 - -N or --net
@@ -92,7 +105,7 @@ All wallets are installed to the /usr/local/bin directory.
 
 ## Recomended installation instructions:
 
-To begin you must first download the initial script and give it execute permission by executing the following commands:
+To begin, you must first download the initial script and give it execute permission with the following commands:
 
 ```
 wget -q "https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh" --show-progress
