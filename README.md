@@ -105,12 +105,11 @@ To save time on 2+ installs, the wallet binaries are archived in the wallet dire
 
 ## Recomended installation instructions:
 
-To begin, you must first download the initial script and give it execute permission with the following commands:
+To begin, you must first download the initial script and give it execute permission with the following 2 commands:
 
-```
-wget -q "https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh" --show-progress
-sudo chmod +x nullex-nav-installer.sh
-```
+`wget https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh`
+
+`sudo chmod +x nullex-nav-installer.sh`
 
 #### Install 1st/default wallet using IPv6:
 
