@@ -195,7 +195,7 @@ check_stop_wallet() {
 	# Check if the wallet is currently running
 	if [ -f "${HOME_DIR}/${1}/${WALLET_NAME}d" ] && [ -n "$(lsof "${HOME_DIR}/${1}/${WALLET_NAME}d")" ]; then
 		# Wallet is running. Issue stop command
-		${HOME_DIR}/${1}/${WALLET_NAME}-cli -datadir=${HOME}/.${1} stop >/dev/null 2>&1 && echo
+		${HOME_DIR}/${1}/${WALLET_NAME}-cli -datadir=${HOME}/.${1} stop >/dev/null 2>&1
 		# Wait for wallet to close		
 		PERIOD=".  "
 
@@ -539,7 +539,7 @@ if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ] && [ "${SCRIPT_VE
         [yY])
 			# Update to newest version of script
 			echo "Updating, please wait..."
-			 Overwrite the current script with the newest version
+			# Overwrite the current script with the newest version
 			{
 				echo "$(curl -s -k "${SCRIPT_URL}")"
 			} > ${0}
@@ -775,7 +775,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	if [ -f "${HOME_DIR}/${INSTALL_DIR}/${WALLET_NAME}d" ] && [ -n "$(lsof "${HOME_DIR}/${INSTALL_DIR}/${WALLET_NAME}d")" ]; then
 		# Wallet is running. Issue stop command
 		echo "${CYAN}#####${NONE} Close wallet ${CYAN}#####${NONE}"
-		check_stop_wallet ${INSTALL_DIR} && echo
+		echo && check_stop_wallet ${INSTALL_DIR} && echo
 	fi
 
 	# Now that the wallet is not running, delete the old wallet files
@@ -1006,7 +1006,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				# Check if the other wallet is currently running and stop it if running
 				if [ -f "${HOME_DIR}/${DIR_TEST}/${WALLET_NAME}d" ] && [ -n "$(lsof "${HOME_DIR}/${DIR_TEST}/${WALLET_NAME}d")" ]; then
 					# Wallet is running. Issue stop command
-					echo "Temporarily closing wallet #${i}\c"
+					echo "Temporarily closing wallet #${i}"
 					check_stop_wallet ${DIR_TEST}
 					NEED_RESTART=1
 				fi
@@ -1047,7 +1047,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		GENERATE_GENKEY=1
 		echo && printf "Generated new genkey value: ${NULLGENKEY}"
 		# Stop the wallet
-		check_stop_wallet ${INSTALL_DIR}
+		echo && check_stop_wallet ${INSTALL_DIR}
 		# Overwrite configuration file settings (now with the proper genkey value)
 		write_config
 	fi	
@@ -1143,7 +1143,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 else
 	# Check to ensure this wallet # is actually installed	
 	if [ ! -d "${HOME_DIR}/${INSTALL_DIR}" ] && [ ! -d "${HOME}/.${INSTALL_DIR}" ]; then
-		# Wallet is not installed		
+		# Wallet is not installed
 		error_message "Cannot find installed wallet in ${HOME_DIR}/${INSTALL_DIR}"
 	fi
 
@@ -1159,7 +1159,7 @@ else
     esac
 	
 	# Check if wallet is currently running and stop it if running	
-	check_stop_wallet ${INSTALL_DIR}
+	echo && check_stop_wallet ${INSTALL_DIR}
 
 	# Check if the wallet created an IPv6 address
 	if [ -f "${HOME_DIR}/${INSTALL_DIR}/.ip6.conf" ]; then
