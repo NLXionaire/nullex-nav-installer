@@ -1,6 +1,6 @@
 # NulleX NAV Installer
 
-### Beta Release v0.9.7
+### Beta Release v0.9.8
 #### IMPORTANT NOTE 1:
 The original default/fastest method of installing a NAV wallet is by using precompiled binaries but this ability has been temporarily disabled due to the fact that official binaries have not yet been released for the linux wallet. Therefore the install process is temporarily defaulted to building the wallet from source, which takes significantly much more time and uses more hard drive space, etc. The default will be reverted back to the faster install process as soon as proper binaries can be procured.
 
