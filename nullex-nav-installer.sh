@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v0.9.6
-# Date:    July 9, 2018
+# Version: v0.9.7
+# Date:    July 11, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -10,9 +10,9 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Constant Variables
-readonly SCRIPT_VERSION="0.9.6"
-readonly WALLET_VERSION="1.3.3"
-readonly WALLET_FILE="nullex-1.3.3-linux.tar.gz"
+readonly SCRIPT_VERSION="0.9.7"
+readonly WALLET_VERSION="1.3.3.1"
+readonly WALLET_FILE="nullex-1.3.3.1-linux.tar.gz"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -460,6 +460,26 @@ case $INSTALL_TYPE in
 esac
 
 if [ "$INSTALL_TYPE" = "Install" ]; then
+	if [ -f ${HOME}/.${INSTALL_DIR}/${DATA_DIR}.conf ]; then
+		# Update install
+		
+		if [ -z "$NULLGENKEY" ]; then
+			# Read the genkey value from the config file
+			NULLGENKEY=$(grep "masternodeprivkey" ${HOME}/.${INSTALL_DIR}/${DATA_DIR}.conf | sed -e "s/masternodeprivkey=//g")
+		fi
+
+		if [ -f ${HOME_DIR}/${INSTALL_DIR}/.ip6.conf ]; then
+			# Read the ip address type from the config file
+			if [ "$NET_TYPE" -eq 6 ]; then
+				# Ensure that the reboot script still remembers to create the proper IPv6 address after reboot
+				WRITE_IP6_CONF=1
+			fi
+		elif [ "$NET_TYPE" -eq 6 ]; then
+			# Assume the previous install was IPv4
+			NET_TYPE=4
+		fi
+	fi
+	
 	case $WALLET_TYPE in
 		[dD]) WALLET_TYPE="d" ;;
 		[bB]) WALLET_TYPE="b" ;;
@@ -474,7 +494,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		# Setup IPv6 support before validating ip address
 		init_ipv6
 	fi
-	
+
 	if [ -n "$WAN_IP" ] && (([ "$NET_TYPE" -eq 4 ] && [ -n "$(validate_ip4address $WAN_IP)" ]) || ([ "$NET_TYPE" -eq 6 ] && [ -n "$(validate_ip6address $WAN_IP)" ])); then
 		echo && error_message "Invalid ip address"
 	fi
@@ -487,20 +507,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		fi
 	else
 		PORT_NUMBER=$(( $PORT_NUMBER + $INSTALL_NUM ))
-	fi
-	
-	if [ -f ${HOME}/.${INSTALL_DIR}/${DATA_DIR}.conf ]; then
-		# Update install
-		
-		if [ -z "$NULLGENKEY" ]; then
-			# Read the genkey value from the config file
-			NULLGENKEY=$(grep "masternodeprivkey" ${HOME}/.${INSTALL_DIR}/${DATA_DIR}.conf | sed -e "s/masternodeprivkey=//g")
-		fi
-		
-		if [ -f ${HOME_DIR}/${INSTALL_DIR}/.ip6.conf ] && [ "$NET_TYPE" -eq 6 ]; then
-			# Ensure that the reboot script still remembers to create the proper IPv6 address after reboot
-			WRITE_IP6_CONF=1
-		fi
 	fi
 fi
 
@@ -854,8 +860,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			eval "git clone ${SOURCE_URL} ${SOURCE_DIR}"
 			# Change directory into new repo
 			eval "cd ${SOURCE_DIR}"
-			# Temporary fix for zmqconfig.h typo
-			sed -i '9s/.*/#include "config\/nullex-config.h"/' src/zmq/zmqconfig.h
 			# Build wallet from source code
 			echo && echo "${CYAN}#####${NONE} Start build from source code ${CYAN}#####${NONE}" && echo
 			eval "./autogen.sh"
@@ -867,8 +871,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			# Move wallet files
 			find ${SOURCE_DIR} -name "${WALLET_NAME}d" -type f -exec mv {} "${HOME_DIR}/" \;
 			find ${SOURCE_DIR} -name "${WALLET_NAME}-cli" -type f -exec mv {} "${HOME_DIR}/" \;
-			# Remove the downloaded source directory
-			eval "rm -rf ${SOURCE_DIR}"			
 			# Change directory to the wallet install location
 			eval "cd ${HOME_DIR}"
 			# Add wallet files to a new archive that can be used to install faster for 2+ installs
