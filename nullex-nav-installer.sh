@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Version: v0.9.7
+# Version: v0.9.8
 # Date:    July 11, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
@@ -10,9 +10,9 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Constant Variables
-readonly SCRIPT_VERSION="0.9.7"
-readonly WALLET_VERSION="1.3.3.1"
-readonly WALLET_FILE="nullex-1.3.3.1-linux.tar.gz"
+readonly SCRIPT_VERSION="0.9.8"
+readonly WALLET_VERSION="1.3.3-NEW"
+readonly WALLET_FILE="nullex-1.3.3-NEW-linux.tar.gz"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -333,7 +333,7 @@ if ! contains "16.04" "$LINUX_VERSION"; then
 	read -p "" INSTALL_ANSWER
 	
     case "$INSTALL_ANSWER" in
-        [yY]) ;;
+        y|Y|yes|Yes|YES) ;;
         *) exit ;;
     esac
 fi
@@ -433,6 +433,9 @@ while true; do
     esac
 done
 
+# Ensure commands are executed from the users home directory
+eval "cd ${HOME}"
+# Set install directory
 if [ "$INSTALL_NUM" -eq 1 ]; then
 	INSTALL_DIR="${DATA_DIR}"
 else
@@ -536,13 +539,15 @@ if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ] && [ "${SCRIPT_VE
 	echo && echo -n "Would you like to update now? [y/n]: "
 	read -p "" UPDATE_NOW
     case "$UPDATE_NOW" in
-        [yY])
+        y|Y|yes|Yes|YES)
 			# Update to newest version of script
 			echo "Updating, please wait..."
 			# Overwrite the current script with the newest version
 			{
 				echo "$(curl -s -k "${SCRIPT_URL}")"
-			} > ${0}
+			} > ${HOME}/${0##*/}
+			# Ensure script is executable
+			chmod +x ${HOME}/${0##*/}
 			# Fix parameters before restarting
 			case $INSTALL_TYPE in
 				"Install") INSTALL_TYPE="i" ;;
@@ -578,7 +583,7 @@ if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ] && [ "${SCRIPT_VE
 				SYNCCHAIN=""
 			fi
 			# Restart the newest version of the script
-			eval "sh ${0} -t ${INSTALL_TYPE} -w ${WALLET_TYPE}${NULLGENKEY} -N ${NET_TYPE}${WAN_IP}${PORT_NUMBER} -n ${INSTALL_NUM}${SWAP}${FIREWALL}${FAIL2BAN}${SYNCCHAIN}"
+			eval "sh ${HOME}/${0##*/} -t ${INSTALL_TYPE} -w ${WALLET_TYPE}${NULLGENKEY} -N ${NET_TYPE}${WAN_IP}${PORT_NUMBER} -n ${INSTALL_NUM}${SWAP}${FIREWALL}${FAIL2BAN}${SYNCCHAIN}"
 			exit
 			;;
     esac
@@ -819,51 +824,64 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			# Extract wallet files from downloaded archive
 			extract_wallet_files
 		else
-			# Check if the ppa:bitcoin/bitcoin repository is already installed
-			if [ ! -f /etc/apt/sources.list.d ] || [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
-				# Add the ppa:bitcoin/bitcoin repository
-				echo "${CYAN}#####${NONE} Add ppa:bitcoin/bitcoin repository ${CYAN}#####${NONE}" && echo
-				add-apt-repository ppa:bitcoin/bitcoin -y && echo
-				
-				# Check to ensure the package was installed
-				if [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
-					echo && error_message "Failed to add the ppa:bitcoin/bitcoin repository"
-				else
-					# Update package lists and repositories
-					echo "${CYAN}#####${NONE} Updating package lists and repositories ${CYAN}#####${NONE}" && echo
-					apt-get update -y && echo
+			# Check if the source directory already exists
+			if [ -d "${SOURCE_DIR}" ]; then
+				# Update the git repository
+				echo "${CYAN}#####${NONE} Updating local wallet source code ${CYAN}#####${NONE}" && echo
+				# Change directory into existing repo
+				eval "cd ${SOURCE_DIR}"
+				# Pull the newest updates
+				eval "git pull"
+			else
+				# Install wallet source and all dependencies
+				# Check if the ppa:bitcoin/bitcoin repository is already installed
+				if [ ! -f /etc/apt/sources.list.d ] || [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
+					# Add the ppa:bitcoin/bitcoin repository
+					echo "${CYAN}#####${NONE} Add ppa:bitcoin/bitcoin repository ${CYAN}#####${NONE}" && echo
+					add-apt-repository ppa:bitcoin/bitcoin -y && echo
+					
+					# Check to ensure the package was installed
+					if [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
+						echo && error_message "Failed to add the ppa:bitcoin/bitcoin repository"
+					else
+						# Update package lists and repositories
+						echo "${CYAN}#####${NONE} Updating package lists and repositories ${CYAN}#####${NONE}" && echo
+						apt-get update -y && echo
+					fi
 				fi
+				
+				# Install wallet dependencies
+				check_install_package "automake" "automake"
+				check_install_package "build-essential" "build-essential"
+				check_install_package "libtool" "libtool"
+				check_install_package "autotools-dev" "autotools-dev"
+				check_install_package "autoconf" "autoconf"
+				check_install_package "pkg-config" "pkg-config"
+				check_install_package "libssl-dev" "libssl-dev"
+				check_install_package "libevent-dev" "libevent-dev"
+				check_install_package "software-properties-common" "software-properties-common"
+				check_install_package "libboost-all-dev" "libboost-all-dev"
+				check_install_package "libdb-dev" "libdb-dev"
+				check_install_package "libdb++-dev" "libdb++-dev"
+				check_install_package "libqrencode-dev" "libqrencode-dev"
+				check_install_package "aptitude" "aptitude"
+				check_install_package "libdb4.8-dev" "libdb4.8-dev"
+				check_install_package "libdb4.8++-dev" "libdb4.8++-dev"
+				check_install_package "git" "git"
+				# Remember current directory
+				CURRENT_DIR=${PWD}
+				# Download the github repo
+				echo "${CYAN}#####${NONE} Downloading source code ${CYAN}#####${NONE}" && echo
+				eval "git clone ${SOURCE_URL} ${SOURCE_DIR}"
+				# Change directory into new repo
+				eval "cd ${SOURCE_DIR}"
+				# Build wallet from source code
+				echo && echo "${CYAN}#####${NONE} Start build from source code ${CYAN}#####${NONE}" && echo
+				eval "./autogen.sh"
+				eval "./configure --with-libressl --without-gui"
 			fi
 			
-			# Install wallet dependencies
-			check_install_package "automake" "automake"
-			check_install_package "build-essential" "build-essential"
-			check_install_package "libtool" "libtool"
-			check_install_package "autotools-dev" "autotools-dev"
-			check_install_package "autoconf" "autoconf"
-			check_install_package "pkg-config" "pkg-config"
-			check_install_package "libssl-dev" "libssl-dev"
-			check_install_package "libevent-dev" "libevent-dev"
-			check_install_package "software-properties-common" "software-properties-common"
-			check_install_package "libboost-all-dev" "libboost-all-dev"
-			check_install_package "libdb-dev" "libdb-dev"
-			check_install_package "libdb++-dev" "libdb++-dev"
-			check_install_package "libqrencode-dev" "libqrencode-dev"
-			check_install_package "aptitude" "aptitude"
-			check_install_package "libdb4.8-dev" "libdb4.8-dev"
-			check_install_package "libdb4.8++-dev" "libdb4.8++-dev"
-			check_install_package "git" "git"
-			# Remember current directory
-			CURRENT_DIR=${PWD}
-			# Download the github repo
-			echo "${CYAN}#####${NONE} Downloading source code ${CYAN}#####${NONE}" && echo
-			eval "git clone ${SOURCE_URL} ${SOURCE_DIR}"
-			# Change directory into new repo
-			eval "cd ${SOURCE_DIR}"
-			# Build wallet from source code
-			echo && echo "${CYAN}#####${NONE} Start build from source code ${CYAN}#####${NONE}" && echo
-			eval "./autogen.sh"
-			eval "./configure --with-libressl --without-gui"
+			# Make the files
 			eval "make"
 			echo && echo "${CYAN}#####${NONE} Finalizing build ${CYAN}#####${NONE}" && echo
 			# Return to previous directory
@@ -1154,7 +1172,7 @@ else
 	read -p "" UNINSTALL_ANSWER
 	
     case "$UNINSTALL_ANSWER" in
-        [yY]) ;;
+        y|Y|yes|Yes|YES) ;;
         *) exit ;;
     esac
 	
