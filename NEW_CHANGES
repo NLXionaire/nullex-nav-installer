@@ -1,3 +1,4 @@
 -Added support for new wallet v1.3.3.1
 -IP address type (4 or 6) is now remembered properly from previous install when updating a wallet install
+-Fixed the update script functionality
 -Source code directory is no longer removed after building binaries from source in preparation for potentially speeding up future wallet updates
