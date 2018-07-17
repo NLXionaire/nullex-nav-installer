@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v0.9.8
-# Date:    July 11, 2018
+# Version: v0.9.9
+# Date:    July 17, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -10,9 +10,9 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Constant Variables
-readonly SCRIPT_VERSION="0.9.8"
-readonly WALLET_VERSION="1.3.3-NEW"
-readonly WALLET_FILE="nullex-1.3.3-NEW-linux.tar.gz"
+readonly SCRIPT_VERSION="0.9.9"
+readonly WALLET_VERSION="1.3.4"
+readonly WALLET_FILE="nullex-1.3.4-linux.tar.gz"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -661,7 +661,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	fi
 	
 	# Wait for timeout
-
 	IFS=:
 	set -- $*
 	echo
@@ -673,10 +672,27 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		wait
 	done
 	printf "\r                                      "
-
-	## Update package lists, repositories and new software versions
-	#echo && echo "${CYAN}#####${NONE} Updating package lists, repositories and new software versions ${CYAN}#####${NONE}" && echo
-	#apt-get update -y && apt-get upgrade -y && echo
+	# Check if this script has ever been run before
+	FIRST_RUN=1
+	i=1; while [ $i -le 99 ]; do
+		case $i in
+			1) DIR_TEST="${DATA_DIR}" ;;
+			*) DIR_TEST="${DATA_DIR}${i}" ;;
+		esac
+		
+		if [ "${FIRST_RUN}" -eq 1 ] && [ -d "${HOME_DIR}/${DIR_TEST}" ]; then
+			# There is an existing wallet so this is not the first install
+			FIRST_RUN=0
+		fi
+		
+		i=$(( i + 1 ))
+	done
+	
+	# if this is the first run then update package lists and repositories
+	if [ "${FIRST_RUN}" -eq 1 ]; then
+		echo && echo "${CYAN}#####${NONE} Updating package lists and repositories ${CYAN}#####${NONE}" && echo
+		apt-get update -y 
+	fi
 	echo
 	
 	if [ "$SWAP" -eq 1 ]; then
