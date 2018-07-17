@@ -1,2 +1,4 @@
--Added support for new wallet v1.3.4
--New installs now update package lists and repositories before installing
+-Added support for new wallet v1.3.3-NEW
+-Build from source now builds wallet updates faster when the previous wallet source is found locally
+-Switches to home directory on load to prevent future issues when installing from alternate directories
+-Better handling of y/n questions (yes,Yes,YES now supported)
