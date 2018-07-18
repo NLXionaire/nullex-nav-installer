@@ -1,6 +1,6 @@
 # NulleX NAV Installer
 
-### Beta Release v0.9.8
+### Beta Release v0.9.9
 #### IMPORTANT NOTE 1:
 The original default/fastest method of installing a NAV wallet is by using precompiled binaries but this ability has been temporarily disabled due to the fact that official binaries have not yet been released for the linux wallet. Therefore the install process is temporarily defaulted to building the wallet from source, which takes significantly much more time and uses more hard drive space, etc. The default will be reverted back to the faster install process as soon as proper binaries can be procured.
 
@@ -182,15 +182,15 @@ sudo sh nullex-nav-installer.sh -t u -n 5
 #### Stop the 2nd wallet:
 
 ```
-/usr/local/bin/NulleX2/nullex-cli -datadir=$HOME/.NulleX2 stop
+/usr/local/bin/NulleX2/nullex-cli -datadir=$HOME/.nullexqt2 stop
 ```
 
 #### Stop the 3rd, 4th, 5th wallet:
 
 ```
-/usr/local/bin/NulleX3/nullex-cli -datadir=$HOME/.NulleX3 stop
-/usr/local/bin/NulleX4/nullex-cli -datadir=$HOME/.NulleX4 stop
-/usr/local/bin/NulleX5/nullex-cli -datadir=$HOME/.NulleX5 stop
+/usr/local/bin/NulleX3/nullex-cli -datadir=$HOME/.nullexqt3 stop
+/usr/local/bin/NulleX4/nullex-cli -datadir=$HOME/.nullexqt4 stop
+/usr/local/bin/NulleX5/nullex-cli -datadir=$HOME/.nullexqt5 stop
 ```
 
 #### Start the 1st/default wallet:
@@ -202,13 +202,13 @@ sudo sh nullex-nav-installer.sh -t u -n 5
 #### Start the 2nd wallet:
 
 ```
-/usr/local/bin/NulleX2/nullexd -datadir=$HOME/.NulleX2 -daemon
+/usr/local/bin/NulleX2/nullexd -datadir=$HOME/.nullexqt2 -daemon
 ```
 
 #### Start the 3rd, 4th, 5th wallet:
 
 ```
-/usr/local/bin/NulleX3/nullexd -datadir=$HOME/.NulleX3 -daemon
-/usr/local/bin/NulleX4/nullexd -datadir=$HOME/.NulleX4 -daemon
-/usr/local/bin/NulleX5/nullexd -datadir=$HOME/.NulleX5 -daemon
+/usr/local/bin/NulleX3/nullexd -datadir=$HOME/.nullexqt3 -daemon
+/usr/local/bin/NulleX4/nullexd -datadir=$HOME/.nullexqt4 -daemon
+/usr/local/bin/NulleX5/nullexd -datadir=$HOME/.nullexqt5 -daemon
 ```
