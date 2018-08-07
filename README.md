@@ -1,17 +1,17 @@
 # NulleX NAV Installer
 
-### Beta Release v0.9.9
+### v1.0.0
 #### IMPORTANT NOTE 1:
 The original default/fastest method of installing a NAV wallet is by using precompiled binaries but this ability has been temporarily disabled due to the fact that official binaries have not yet been released for the linux wallet. Therefore the install process is temporarily defaulted to building the wallet from source, which takes significantly much more time and uses more hard drive space, etc. The default will be reverted back to the faster install process as soon as proper binaries can be procured.
 
 #### IMPORTANT NOTE 2:
-The script was written with the ability to install multiple NAV's in parallel on the same VPS but it was recently discovered that the open source code used in the NulleX wallet specifically does not allow this configuration. If and when a solution to this problem is discovered, this script already contains full support for running multiple NAV's on the same VPS and will "just work" if the wallets themselves can be updated to get around this problem.
+The install script was written with the ability to install multiple NAV's in parallel on the same VPS but the NulleX wallet specifically does not allow this configuration (yet). If and when a solution to this problem is discovered, this script already contains full support for running multiple NAV's on the same VPS and will "just work" if the wallets themselves can be updated to get around this problem.
 
 ## General information
 
 A custom masternode install script made from scratch specifically for installing Nullex NAVs.
 
-Currently, it must be run on Ubuntu Linux 16.04 and has been tested to work using VPS systems from vultr.com only but should be generic enough to run anywhere (Please let @NLXionaire know your experience in https://t.me/NullexOfficial if you have tried with another VPS provider).
+Currently, it must be run on Ubuntu Linux 16.04 and has been tested to work using VPS systems from vultr.com and lunanode.com only but should be generic enough to run anywhere (Please let @NLXionaire know your experience in https://t.me/NullexOfficial or https://discord.gg/YrzChXX if you have tried with another VPS provider).
 
 Since this script has the potential to install "extra" software components such as a firewall and/or create a swap disk file, root privileges are required to install properly. Therefore, you must either run the script using the `sudo` command prefix or else run directly as the root user (generally not recommended for security reasons but still supported).
 
@@ -23,7 +23,8 @@ To save time on 2+ installs, the wallet binaries are archived in the wallet dire
 
 - Supports installing, updating or uninstalling up to 99 Nullex Nav installs on the same VPS
 - IPv4 and IPv6 support
-- Automatic update feature ensures you are always installing using the most up-to-date script
+- Script update feature ensures you are always installing using the most up-to-date script
+- Wallet update feature ensures you do not have to wait for an updated script to be released to install the latest wallet version
 - Install wallet from compiled binary files or build from source code
 - Faster syncing times for 2+ installs by copying previously installed blockchain files over to new installs
 - Automatic restart of installed Navs after reboot
@@ -145,6 +146,20 @@ sudo sh nullex-nav-installer.sh -n 5 -s -b
 
 **NOTE:** If you are installing multiple wallets, they do not need to be installed in any specific order although it is generally easier to install in numerical sequence (install 1 then 2 then 3, etc).
 
+## Update instructions:
+
+At any point after the initial installation you can "refresh" a particular wallet install by re-running the following command:
+
+`sudo sh nullex-nav-installer.sh`
+
+This will "remember" all of your previously installed settings and allow you to update the installed wallet to the latest version (assuming a new version has been released since the last update/install).
+
+If you would like to keep your wallet installed but just change one of the options, such as ip address type, you could update install using something like this:
+
+`sudo sh nullex-nav-installer.sh -N 4`
+
+This would allow you to change an IPv6 installed wallet into an IPv4 wallet. **NOTE:** Changing options like this will most likely require you to reconfigure your cold wallet NulleX.conf and masternode.conf files. The 'Final setup instructions' are always displayed at the end of an update install the same way as they are for the initial install.
+
 ## Uninstallation instructions:
 
 #### Uninstall 1st/default wallet:
@@ -176,39 +191,79 @@ sudo sh nullex-nav-installer.sh -t u -n 5
 #### Stop the 1st/default wallet:
 
 ```
-/usr/local/bin/NulleX/nullex-cli stop
+nullex-cli stop
 ```
 
 #### Stop the 2nd wallet:
 
 ```
-/usr/local/bin/NulleX2/nullex-cli -datadir=$HOME/.nullexqt2 stop
+nullex-cli2 -datadir=$HOME/.nullexqt2 stop
 ```
 
 #### Stop the 3rd, 4th, 5th wallet:
 
 ```
-/usr/local/bin/NulleX3/nullex-cli -datadir=$HOME/.nullexqt3 stop
-/usr/local/bin/NulleX4/nullex-cli -datadir=$HOME/.nullexqt4 stop
-/usr/local/bin/NulleX5/nullex-cli -datadir=$HOME/.nullexqt5 stop
+nullex-cli3 -datadir=$HOME/.nullexqt3 stop
+nullex-cli4 -datadir=$HOME/.nullexqt4 stop
+nullex-cli5 -datadir=$HOME/.nullexqt5 stop
 ```
 
 #### Start the 1st/default wallet:
 
 ```
-/usr/local/bin/NulleX/nullexd -daemon
+nullexd
 ```
 
 #### Start the 2nd wallet:
 
 ```
-/usr/local/bin/NulleX2/nullexd -datadir=$HOME/.nullexqt2 -daemon
+nullexd2 -datadir=$HOME/.nullexqt2
 ```
 
 #### Start the 3rd, 4th, 5th wallet:
 
 ```
-/usr/local/bin/NulleX3/nullexd -datadir=$HOME/.nullexqt3 -daemon
-/usr/local/bin/NulleX4/nullexd -datadir=$HOME/.nullexqt4 -daemon
-/usr/local/bin/NulleX5/nullexd -datadir=$HOME/.nullexqt5 -daemon
+nullexd3 -datadir=$HOME/.nullexqt3 -daemon
+nullexd4 -datadir=$HOME/.nullexqt4 -daemon
+nullexd5 -datadir=$HOME/.nullexqt5 -daemon
+```
+
+#### View the 1st/default wallets current block:
+
+```
+nullex-cli getblockcount
+```
+
+#### View the 2nd wallets current block:
+
+```
+nullex-cli2 -datadir=$HOME/.nullexqt2 getblockcount
+```
+
+#### View the 3rd, 4th, 5th wallets current block:
+
+```
+nullex-cli3 -datadir=$HOME/.nullexqt3 getblockcount
+nullex-cli4 -datadir=$HOME/.nullexqt4 getblockcount
+nullex-cli5 -datadir=$HOME/.nullexqt5 getblockcount
+```
+
+#### Check masternode status for the 1st/default wallet:
+
+```
+nullex-cli masternode status
+```
+
+#### Check masternode status for the 2nd wallet:
+
+```
+nullex-cli2 -datadir=$HOME/.nullexqt2 masternode status
+```
+
+#### Check masternode status for the 3rd, 4th, 5th wallets:
+
+```
+nullex-cli3 -datadir=$HOME/.nullexqt3 masternode status
+nullex-cli4 -datadir=$HOME/.nullexqt4 masternode status
+nullex-cli5 -datadir=$HOME/.nullexqt5 masternode status
 ```

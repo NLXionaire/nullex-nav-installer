@@ -1,18 +1,19 @@
 #!/bin/bash
 #
-# Version: v0.9.9
-# Date:    July 17, 2018
+# Version: v1.0.0
+# Date:    August 7, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
-# Tested to be working on Ubuntu 16.04 x64 with Vultr VPS
-# Please report other working instances to @NLXionaire on https://t.me/NullexOfficial
+# Tested to be working on Ubuntu 16.04 x64 with Vultr and Lunanode VPS
+# Please report other working instances to:
+#	Telegram: @NLXionaire on https://t.me/NullexOfficial
+#	or
+#	Discord: @NLXionaire on https://discord.gg/YrzChXX
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
-# Constant Variables
-readonly SCRIPT_VERSION="0.9.9"
-readonly WALLET_VERSION="1.3.4"
-readonly WALLET_FILE="nullex-1.3.4-linux.tar.gz"
+# Global Variables
+readonly SCRIPT_VERSION="1.0.0"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -20,10 +21,14 @@ readonly ARCHIVE_DIR=""
 readonly DEFAULT_WALLET_DIR="NulleX"
 readonly DEFAULT_DATA_DIR=".nullexqt"
 readonly WALLET_CONFIG_NAME="NulleX.conf"
+readonly IP4_CONFIG_NAME=".ip4.conf"
 readonly IP6_CONFIG_NAME=".ip6.conf"
 readonly REBOOT_SCRIPT_NAME=".reboot.sh"
 readonly WALLET_PREFIX="nullex"
 readonly BLOCKCOUNT_URL=""
+readonly RELEASES_URL="https://github.com/white92d15b7/NLX/releases"
+readonly RELEASES_VERSION_START='<span class="css-truncate-target">'
+readonly RELEASES_VERSION_END="</span>"
 readonly REQUIRE_GENERATE_CONF=0
 readonly NONE="\033[00m"
 readonly ORANGE="\033[00;33m"
@@ -40,6 +45,8 @@ readonly HOME_DIR="/usr/local/bin"
 readonly VERSION_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/VERSION"
 readonly SCRIPT_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh"
 readonly NEW_CHANGES_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/NEW_CHANGES"
+WALLET_VERSION="1.3.4"
+WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-linux.tar.gz"
 
 # Default variables
 NET_TYPE=6
@@ -56,6 +63,7 @@ WAIT_TIMEOUT=5
 DATA_INSTALL_DIR=""
 WALLET_INSTALL_DIR=""
 ETH_INTERFACE="ens3"
+WRITE_IP4_CONF=0
 WRITE_IP6_CONF=0
 GENERATE_GENKEY=0
 TEMP_NEW_DATA_DIRECTORY=0
@@ -142,6 +150,11 @@ help_menu() {
 begins_with() { case $2 in "$1"*) true;; *) false;; esac; }
 contains() { case $2 in *"$1"*) true;; *) false;; esac; }
 
+strindex() {
+  x="${1%%$2*}"
+  [ "$x" = "$1" ] && echo -1 || echo "${#x}"
+}
+
 execute_command() {
 	# Ensure that the command is run as the user who initiated the script
 	if [ "$USER" != "${CURRENT_USER}" ]; then
@@ -222,7 +235,7 @@ check_stop_wallet() {
 	fi
 }
 
-init_ipv6() {
+init_network() {
 	# Vultr uses ens3 interface while many other providers use eth0
 	# Check for the default interface status
 	if [ ! -f /sys/class/net/${ETH_INTERFACE}/operstate ]; then
@@ -237,20 +250,11 @@ init_ipv6() {
 	if [ "${ETH_STATUS}" = "down" ] || [ "${ETH_STATUS}" = "" ]; then
 		echo && error_message "Cannot use IPv6. Default interface is down"
 	fi
+}
 
-	# Check if script is being run on Digital Ocean VPS
-	readonly DO_NET_CONF="/etc/network/interfaces.d/50-cloud-init.cfg"
-	if [ -f ${DO_NET_CONF} ]; then
-		# Script is running on Digital Ocean
-		if ! grep -q "::8888" ${DO_NET_CONF}; then
-			# Apply IPv6 fix (only necessary for Digital Ocean installs)
-			echo && echo "${CYAN}#####${NONE} Applying IPv6 fix ${CYAN}#####${NONE}" && echo
-			sed -i '/iface eth0 inet6 static/a dns-nameservers 2001:4860:4860::8844 2001:4860:4860::8888 8.8.8.8 127.0.0.1' ${DO_NET_CONF} >/dev/null 2>&1
-			ifdown ${ETH_INTERFACE} >/dev/null 2>&1
-			ifup ${ETH_INTERFACE} >/dev/null 2>&1
-		fi
-	fi
-
+init_ipv6() {
+	# Initialize network variables
+	init_network
 	# Get the base IPv6 address
 	IPV6_INT_BASE="$(ip -6 addr show dev ${ETH_INTERFACE} | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^fe80 | grep -v ^::1 | cut -f1-4 -d':' | head -1)"
 
@@ -259,24 +263,21 @@ init_ipv6() {
 	fi
 }
 
-check_install_package() {
-	# Check if the package is already installed
-	if [ -z "$({ dpkg -l | grep -E '^ii' | grep ${1}; })" ]; then
-		# Install the package
-		echo "${CYAN}#####${NONE} Install ${2} ${CYAN}#####${NONE}" && echo
-		sleep 2
-		apt-get install ${1} -y && echo
+install_package() {
+	# Install the package
+	echo "${CYAN}#####${NONE} Install ${2} ${CYAN}#####${NONE}" && echo
+	sleep 2
+	apt-get install ${1} -y && echo
 		
-		# Check to ensure the package was installed
-		if [ -z "$({ dpkg -l | grep -E '^ii' | grep ${1}; })" ]; then
-			echo && error_message "Failed to install ${2}"
-		fi
+	# Check to ensure the package was installed
+	if [ -z "$({ dpkg -l | grep -E '^ii' | grep ${1}; })" ]; then
+		echo && error_message "Failed to install ${2}"
 	fi
 }
 
 extract_wallet_files() {
 	echo "${CYAN}#####${NONE} Extract wallet files ${CYAN}#####${NONE}" && echo
-	tar -zxvf "${WALLET_BASE_DIR}/${WALLET_FILE}" -C "${HOME_DIR}" && echo
+	tar -zxvf "${WALLET_BASE_DIR}/${WALLET_FILE}" -C "${HOME}" && echo
 }
 
 backup_rc_local() {
@@ -294,9 +295,16 @@ write_config() {
 		echo "daemon=1"
 		echo "maxconnections=256"
 		echo "externalip=${CONFIG_ADDRESS}"
-		echo "bind=${CONFIG_ADDRESS}"
 		
+		# Check if the ip address can be bound to the wallet
+		if [ -n "$({ ip -${NET_TYPE} addr | grep -i "${WAN_IP}"; })" ]; then
+			# Bind this address to the wallet
+			echo "bind=${CONFIG_ADDRESS}"
+		fi
+		
+		# Check if there is a genkey value yet
 		if [ -n "$NULLGENKEY" ]; then
+			# Write the masternode config section only after a genkey value is present
 			echo "masternode=1"
 			echo "masternodeaddr=${CONFIG_ADDRESS}"		
 			echo "masternodeprivkey=$NULLGENKEY"
@@ -323,6 +331,62 @@ wait_wallet_loaded() {
 		esac && wait
 	done
 	printf "\rWallet loaded successfully   "
+}
+
+online_wallet_check() {
+	echo && echo "${CYAN}#####${NONE} Check for wallet update ${CYAN}#####${NONE}" && echo
+	# Get the github releases html source
+	RELEASES_SOURCE=$(curl -s -k "${RELEASES_URL}")
+	# Find the first/most recent version and drop off any text before that
+	RELEASES_SOURCE=${RELEASES_SOURCE#*${RELEASES_VERSION_START}}
+
+	# Check if a match is found
+	if [ "$(strindex "${RELEASES_SOURCE}" "${RELEASES_VERSION_END}")" -gt -1 ]; then
+		# Scrape the newest wallet release version # from the github html
+		NEW_WALLET_VERSION=$(echo "${RELEASES_SOURCE}" | cut -c1-$(strindex "${RELEASES_SOURCE}" "${RELEASES_VERSION_END}") | head -1)
+	fi
+
+	# Check if the wallet version # is blank or a very long string as that would usually indicate a problem
+	if [ "${#NEW_WALLET_VERSION}" -gt 0 ] && [ "${#NEW_WALLET_VERSION}" -lt 16 ]; then
+		if begins_with "v" "${NEW_WALLET_VERSION}"; then
+			# Remove the 'v' from the beginning of the version string
+			NEW_WALLET_VERSION=$(echo "${NEW_WALLET_VERSION}" | cut -c2-${#NEW_WALLET_VERSION})
+		fi
+
+		if [ "${WALLET_VERSION}" != "${NEW_WALLET_VERSION}" ]; then
+			# A new version of the wallet is available
+			echo "${CYAN}Current wallet:${NONE}	v${WALLET_VERSION}"
+			echo "${CYAN}New wallet:${NONE} 	v${NEW_WALLET_VERSION}"
+		else
+			echo "No new update found"
+		fi
+		
+		# Update the wallet version with the version # found online
+		WALLET_VERSION="${NEW_WALLET_VERSION}"
+	else
+		echo "No new update found"
+	fi
+	
+	# Setup the wallet archive filename
+	WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-linux.tar.gz"
+}
+
+unregisterIP4Address() {
+	ip -4 addr del "${1}/23" dev ${ETH_INTERFACE} >/dev/null 2>&1
+}
+
+unregisterIP6Address() {
+	ip -6 addr del "${1}/64" dev ${ETH_INTERFACE} >/dev/null 2>&1
+}
+
+removeWalletLinks() {
+	if [ "$INSTALL_NUM" -eq 1 ]; then
+		rm -f "${HOME_DIR}/${WALLET_PREFIX}d"
+		rm -f "${HOME_DIR}/${WALLET_PREFIX}-cli"
+	else
+		rm -f "${HOME_DIR}/${WALLET_PREFIX}d${INSTALL_NUM}"
+		rm -f "${HOME_DIR}/${WALLET_PREFIX}-cli${INSTALL_NUM}"
+	fi
 }
 
 # Verify that user has root
@@ -388,7 +452,7 @@ while true; do
             shift;
 			if [ -n "$1" ];
 			then
-				NET_TYPE="$1";
+				INITIAL_NET_TYPE="$1";
 				shift;
 			fi
             ;;
@@ -451,6 +515,9 @@ else
 fi
 
 # Validate command line arguments
+if [ -n "${INITIAL_NET_TYPE}" ]; then
+	NET_TYPE="${INITIAL_NET_TYPE}"
+fi
 
 case $NET_TYPE in
 	4) ;;
@@ -489,15 +556,62 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			NULLGENKEY=$(grep "masternodeprivkey" ${HOME}/${DATA_INSTALL_DIR}/${WALLET_CONFIG_NAME} | sed -e "s/masternodeprivkey=//g")
 		fi
 
-		if [ -f ${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME} ]; then
-			# Read the ip address type from the config file
-			if [ "$NET_TYPE" -eq 6 ]; then
-				# Ensure that the reboot script still remembers to create the proper IPv6 address after reboot
-				WRITE_IP6_CONF=1
+		# Read ip address information
+		if [ -f ${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME} ]; then
+			# Previous install was IPv4, check to see if it should still be IPv4
+			if [ -z "${WAN_IP}" ] && ([ -z "${INITIAL_NET_TYPE}" ] || [ "$INITIAL_NET_TYPE" -eq 4 ]); then
+				# Ensure that the IPv4 config file is re-created
+				WRITE_IP4_CONF=1
+				# Set install to IPv4
+				NET_TYPE=4
+				# Remember IPv4 address from last install
+				WAN_IP=$(cat "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME}")
 			fi
-		elif [ "$NET_TYPE" -eq 6 ]; then
-			# Assume the previous install was IPv4
-			NET_TYPE=4
+			
+			# Initialize network variables
+			init_network
+			# Unregister previous ip address
+			unregisterIP4Address $(cat "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME}")
+			# Remove the IPv4 config file
+			rm -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME}"
+		fi
+		
+		if [ -f ${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME} ]; then
+			# Previous install was IPv6, check to see if it should still be IPv6
+			if [ -z "${WAN_IP}" ] && ([ -z "${INITIAL_NET_TYPE}" ] || [ "$INITIAL_NET_TYPE" -eq 6 ]); then
+				# Ensure that the IPv6 config file is re-created
+				WRITE_IP6_CONF=1
+				# Set install to IPv6
+				NET_TYPE=6
+				# Remember IPv6 address from last install
+				TEMP_WAN_IP=$(cat "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}")
+				# Ensure that the IPv6 address is valid
+				if [ -z "$(validate_ip6address ${TEMP_WAN_IP})" ]; then
+					WAN_IP="${TEMP_WAN_IP}"
+				fi
+			fi
+			
+			# Initialize network variables
+			init_network
+			# Unregister previous ip address
+			unregisterIP6Address $(cat "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}")
+			# Remove the IPv6 config file
+			rm -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}"
+		fi
+		
+		if [ -z "${WAN_IP}" ] && [ -z "${INITIAL_NET_TYPE}" ]; then
+			# Read the ip address value from the config file
+			WAN_IP=$(grep "masternodeaddr" ${HOME}/${DATA_INSTALL_DIR}/${WALLET_CONFIG_NAME} | sed -e "s/masternodeaddr=//g")
+			# Check if this is an IPv6 or IPv4 address
+			if begins_with "[" "${WAN_IP}"; then
+				# Strip the []'s and port from this IPv6 address
+				WAN_IP=$(echo "${WAN_IP}" | cut -c2-$({ echo "${#WAN_IP} - $(printf "%s" "$(echo "${WAN_IP}" | rev | cut -d "]" -f1 | rev)" | wc -c)" | awk '{print $1 - $3 - 1}'; }))
+				NET_TYPE=6
+			else
+				# Strip the port from this IPv4 address
+				WAN_IP=$(echo "${WAN_IP}" | cut -c1-$({ echo "${#WAN_IP} - $(printf "%s" "$(echo "${WAN_IP}" | rev | cut -d ":" -f1 | rev)" | wc -c)" | awk '{print $1 - $3 - 1}'; }))
+				NET_TYPE=4
+			fi
 		fi
 	fi
 	
@@ -609,6 +723,9 @@ else
 	echo "No new update found"
 fi
 
+# Check online for the most recent wallet version
+online_wallet_check
+
 # Get IP Address (if not already specified via command line)
 if [ -z "$WAN_IP" ]; then
 	if [ "$NET_TYPE" -eq 4 ]; then
@@ -706,10 +823,10 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		i=$(( i + 1 ))
 	done
 	
-	# if this is the first run then update package lists and repositories
+	# if this is the first run then update package lists, repositories and new software versions
 	if [ "${FIRST_RUN}" -eq 1 ]; then
-		echo && echo "${CYAN}#####${NONE} Updating package lists and repositories ${CYAN}#####${NONE}" && echo
-		apt-get update -y 
+		echo && echo "${CYAN}#####${NONE} Updating package lists, repositories and new software versions ${CYAN}#####${NONE}" && echo
+		apt-get update -y && apt-get upgrade -y
 	fi
 	echo
 	
@@ -730,18 +847,8 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	fi
 
 	if [ "$FIREWALL" -eq 1 ]; then
-		# Check if firewall is already installed
-		if [ -z "$({ dpkg -l | grep -E '^ii' | grep ufw; })" ]; then
-			# Install firewall
-			echo "${CYAN}#####${NONE} Install firewall ${CYAN}#####${NONE}" && echo
-			apt-get install ufw -y
-			
-			# Check to ensure firewall was installed
-			if [ -z "$({ dpkg -l | grep -E '^ii' | grep ufw; })" ]; then
-				echo && error_message "Failed to install firewall"
-			fi
-		fi
-
+		# Install firewall
+		install_package "ufw" "firewall"
 		# Configure firewall
 		echo "${CYAN}#####${NONE} Configure firewall ${CYAN}#####${NONE}" && echo
 		ufw default allow outgoing
@@ -754,39 +861,41 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	fi
 
 	if [ "$FAIL2BAN" -eq 1 ]; then
-		# Check if brute-force protection is already installed
-		if [ -z "$({ dpkg -l | grep -E '^ii' | grep fail2ban; })" ]; then
-			# Install brute-force protection
-			echo "${CYAN}#####${NONE} Install brute-force protection ${CYAN}#####${NONE}" && echo
-			apt-get install fail2ban -y && echo
-			
-			# Check to ensure brute-force protection was installed
-			if [ -z "$({ dpkg -l | grep -E '^ii' | grep fail2ban; })" ]; then
-				echo && error_message "Failed to install brute-force protection"
-			fi
-		fi
-
+		# Install brute-force protection
+		install_package "fail2ban" "brute-force protection"
 		# Configure brute-force protection
 		echo "${CYAN}#####${NONE} Configure brute-force protection ${CYAN}#####${NONE}" && echo
 		systemctl enable fail2ban
 		systemctl start fail2ban && echo
 	fi
 
+	# Check if the password generator has already been installed
 	if [ -z "$({ dpkg -l | grep -E '^ii' | grep pwgen; })" ]; then
 		# Install password generator
-		echo "${CYAN}#####${NONE} Install password generator (required for wallet setup) ${CYAN}#####${NONE}" && echo
-		sleep 2
-		apt-get install pwgen -y && echo
-		
-		# Check to ensure password generator was installed
-		if [ -z "$({ dpkg -l | grep -E '^ii' | grep pwgen; })" ]; then
-			echo && error_message "Failed to install password generator"
-		fi
+		install_package "pwgen" "password generator (required for wallet setup)"
 	fi
 
 	if [ "$NET_TYPE" -eq 4 ]; then
 		# IPv4 address setup
 		CONFIG_ADDRESS="${WAN_IP}:${PORT_NUMBER}"
+		
+		# Check if IPv4 address is already available
+		if [ -z "$({ ip -4 addr | grep -i "${WAN_IP}"; })" ]; then
+			# IPv4 address is not already available
+			echo "${CYAN}#####${NONE} Registering public IPv4 address: ${WAN_IP} ${CYAN}#####${NONE}" && echo
+			# Add public IPv4 address to the system
+			ip -4 addr add "${WAN_IP}/23" dev ${ETH_INTERFACE} >/dev/null 2>&1
+			if [ $? -eq 0 ]; then
+				# Public ip address registered successfully
+				# Remember the ip4 address for later
+				WRITE_IP4_CONF=1
+				sleep 2
+				echo "Done" && echo
+			else
+				# Error while trying to create the IPv4 adddress
+				error_message "Unable to create IPv4 address"
+			fi
+		fi
 	else
 		# IPv6 address setup
 		CONFIG_ADDRESS="[${WAN_IP}]:${PORT_NUMBER}"
@@ -809,25 +918,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			fi
 		fi
 	fi
-
-	# Check if wallet is currently running and stop it if running
-	if [ -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d" ] && [ -n "$(lsof "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d")" ]; then
-		# Wallet is running. Issue stop command
-		echo "${CYAN}#####${NONE} Close wallet ${CYAN}#####${NONE}"
-		echo && check_stop_wallet "${WALLET_INSTALL_DIR}" "${DATA_INSTALL_DIR}" && echo
-	fi
-	
-	# TEMP check if the old data directory needs to be moved
-	if [ "${TEMP_NEW_DATA_DIRECTORY}" -eq 1 ]; then
-		# Remove the new data directory that was recently created
-		rm -rf "${HOME}/${DATA_INSTALL_DIR}"
-		# Rename the old data directory
-		mv "${HOME}/.${DEFAULT_WALLET_DIR}" "${HOME}/${DATA_INSTALL_DIR}"
-	fi
-
-	# Now that the wallet is not running, delete the old wallet files
-	rm -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d"
-	rm -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli"
 	
 	# Check if there is already a saved wallet available instead of downloading a new one again
 	WALLET_BASE_DIR="${HOME_DIR}"
@@ -852,6 +942,9 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		i=$(( i + 1 ))
 	done
 	
+	# Remove old links to wallet binaries
+	removeWalletLinks
+
 	if [ "$WALLET_BASE_DIR" = "${HOME_DIR}" ]; then
 		if [ "$WALLET_TYPE" = "d" ]; then
 			# Download wallet
@@ -866,6 +959,8 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			# Extract wallet files from downloaded archive
 			extract_wallet_files
 		else
+			BUILD_SOURCE=0
+			INSTALL_DEPENDENCIES=0
 			# Check if the source directory already exists
 			if [ -d "${SOURCE_DIR}" ]; then
 				# Update the git repository
@@ -873,43 +968,53 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				# Change directory into existing repo
 				eval "cd ${SOURCE_DIR}"
 				# Pull the newest updates
-				eval "git pull"
-			else
-				# Install wallet source and all dependencies
-				# Check if the ppa:bitcoin/bitcoin repository is already installed
-				if [ ! -f /etc/apt/sources.list.d ] || [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
-					# Add the ppa:bitcoin/bitcoin repository
-					echo "${CYAN}#####${NONE} Add ppa:bitcoin/bitcoin repository ${CYAN}#####${NONE}" && echo
-					add-apt-repository ppa:bitcoin/bitcoin -y && echo
-					
-					# Check to ensure the package was installed
-					if [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
-						echo && error_message "Failed to add the ppa:bitcoin/bitcoin repository"
-					else
-						# Update package lists and repositories
-						echo "${CYAN}#####${NONE} Updating package lists and repositories ${CYAN}#####${NONE}" && echo
-						apt-get update -y && echo
-					fi
+				exec 5>&1 && SOME_TEST=$(git pull 2>&1 | tee /dev/fd/5;)
+				# Check if the repo is already up to date
+				if [ "${SOME_TEST}" != "Already up-to-date." ]; then
+					INSTALL_DEPENDENCIES=1
 				fi
+			else
+				# Source directory does not exist
+				INSTALL_DEPENDENCIES=1
+				BUILD_SOURCE=1
+			fi
+			
+			if [ "${INSTALL_DEPENDENCIES}" -eq 1 ]; then
+				# Install wallet source and all dependencies
+				# Add the ppa:bitcoin/bitcoin repository
+				echo "${CYAN}#####${NONE} Add ppa:bitcoin/bitcoin repository ${CYAN}#####${NONE}" && echo
+				add-apt-repository ppa:bitcoin/bitcoin -y && echo
 				
+				# Check to ensure the package was installed
+				if [ -z "$({ grep ^ /etc/apt/sources.list /etc/apt/sources.list.d/* | grep bitcoin/bitcoin; })" ]; then
+					echo && error_message "Failed to add the ppa:bitcoin/bitcoin repository"
+				else
+					# Update package lists and repositories
+					echo "${CYAN}#####${NONE} Updating package lists and repositories ${CYAN}#####${NONE}" && echo
+					apt-get update -y && echo
+				fi
+
 				# Install wallet dependencies
-				check_install_package "automake" "automake"
-				check_install_package "build-essential" "build-essential"
-				check_install_package "libtool" "libtool"
-				check_install_package "autotools-dev" "autotools-dev"
-				check_install_package "autoconf" "autoconf"
-				check_install_package "pkg-config" "pkg-config"
-				check_install_package "libssl-dev" "libssl-dev"
-				check_install_package "libevent-dev" "libevent-dev"
-				check_install_package "software-properties-common" "software-properties-common"
-				check_install_package "libboost-all-dev" "libboost-all-dev"
-				check_install_package "libdb-dev" "libdb-dev"
-				check_install_package "libdb++-dev" "libdb++-dev"
-				check_install_package "libqrencode-dev" "libqrencode-dev"
-				check_install_package "aptitude" "aptitude"
-				check_install_package "libdb4.8-dev" "libdb4.8-dev"
-				check_install_package "libdb4.8++-dev" "libdb4.8++-dev"
-				check_install_package "git" "git"
+				install_package "automake" "automake"
+				install_package "build-essential" "build-essential"
+				install_package "libtool" "libtool"
+				install_package "autotools-dev" "autotools-dev"
+				install_package "autoconf" "autoconf"
+				install_package "pkg-config" "pkg-config"
+				install_package "libssl-dev" "libssl-dev"
+				install_package "libevent-dev" "libevent-dev"
+				install_package "software-properties-common" "software-properties-common"
+				install_package "libboost-all-dev" "libboost-all-dev"
+				install_package "libdb-dev" "libdb-dev"
+				install_package "libdb++-dev" "libdb++-dev"
+				install_package "libqrencode-dev" "libqrencode-dev"
+				install_package "aptitude" "aptitude"
+				install_package "libdb4.8-dev" "libdb4.8-dev"
+				install_package "libdb4.8++-dev" "libdb4.8++-dev"
+				install_package "git" "git"
+			fi
+
+			if [ "${BUILD_SOURCE}" -eq 1 ]; then
 				# Remember current directory
 				CURRENT_DIR=${PWD}
 				# Download the github repo
@@ -944,6 +1049,25 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		extract_wallet_files
 	fi
 
+	# Check if wallet is currently running and stop it if running
+	if [ -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d" ] && [ -n "$(lsof "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d")" ]; then
+		# Wallet is running. Issue stop command
+		echo "${CYAN}#####${NONE} Close wallet ${CYAN}#####${NONE}"
+		echo && check_stop_wallet "${WALLET_INSTALL_DIR}" "${DATA_INSTALL_DIR}" && echo
+	fi
+	
+	# TEMP check if the old data directory needs to be moved
+	if [ "${TEMP_NEW_DATA_DIRECTORY}" -eq 1 ]; then
+		# Remove the new data directory that was recently created
+		rm -rf "${HOME}/${DATA_INSTALL_DIR}"
+		# Rename the old data directory
+		mv "${HOME}/.${DEFAULT_WALLET_DIR}" "${HOME}/${DATA_INSTALL_DIR}"
+	fi
+
+	# Now that the wallet is not running, delete the old wallet files
+	rm -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d"
+	rm -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli"
+	
 	# Wallet setup	
 	echo "${CYAN}#####${NONE} Wallet setup ${CYAN}#####${NONE}" && echo
 
@@ -952,15 +1076,21 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		mkdir "${HOME_DIR}/${WALLET_INSTALL_DIR}"
 	fi
 	
-	if [ $WRITE_IP6_CONF -eq 1 ]; then
-		# Create a small file in the wallet directory to be used for removal of ip6 address at a later time
-		echo 'ip -6 addr add '"${IPV6_INT_BASE}"':'"${NETWORK_BASE_TAG}"'::'"${INSTALL_NUM}"'/64 dev '"${ETH_INTERFACE}"'' > ${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}
+	if [ $WRITE_IP4_CONF -eq 1 ]; then
+		# Create a small file in the wallet directory to be used for removal of ip4 address at a later time
+		echo "${WAN_IP}" > ${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME}
 	fi
 	
-	# Create a small script that will be used to auto-start the wallet on reboot (also init IPv6 address if necessary)
+	if [ $WRITE_IP6_CONF -eq 1 ]; then
+		# Create a small file in the wallet directory to be used for removal of ip6 address at a later time
+		echo "${WAN_IP}" > ${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}
+	fi
+
+	# Create a small script that will be used to auto-start the wallet on reboot and register IP address if necessary
 	{
 		echo "#!/bin/bash"
 		echo 'readonly CURRENT_USER="${1}"'
+		echo 'readonly WAN_IP="'"${WAN_IP}"'"'
 		echo
 		echo "execute_command() {"
 		echo '	if [ "$USER" != "${CURRENT_USER}" ]; then'
@@ -969,38 +1099,44 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		echo '		eval "${1}"'
 		echo '	fi'
 		echo "}"
-		
-		if [ $WRITE_IP6_CONF -eq 1 ]; then
-			# Extend the script to also initialize the IPv6 address on reboot before starting the wallet
-			echo
-			echo 'readonly WAN_IP="'"${WAN_IP}"'"'
-			echo 'ETH_INTERFACE="ens3"'
-			echo
-			echo 'if [ -n "${WAN_IP}" ]; then'
-			echo '	if [ ! -f /sys/class/net/${ETH_INTERFACE}/operstate ]; then'
-			echo '		ETH_INTERFACE="eth0"'
-			echo '	fi'
-			echo
-			echo '	ETH_STATUS=$(cat /sys/class/net/${ETH_INTERFACE}/operstate)'
-			echo
-			echo '	if [ "${ETH_STATUS}" = "up" ]; then'
-			echo '		while [ -z "${IPV6_INT_BASE}" ]; do'
-			echo '			sleep 1'
-			echo '			IPV6_INT_BASE="$(ip -6 addr show dev ${ETH_INTERFACE} | grep inet6 | awk -F '"'"'[ \t]+|/'"'"' '"'"'{print $3}'"'"' | grep -v ^fe80 | grep -v ^::1 | cut -f1-4 -d'"'"':'"'"' | head -1)"'
-			echo '			wait'
-			echo '		done'
-			echo
-			echo '		if [ -z "$({ ip -6 addr | grep -i "${WAN_IP}"; })" ]; then'
-			echo '			ip -6 addr add "${WAN_IP}/64" dev ${ETH_INTERFACE} >/dev/null 2>&1'
-			echo '			if [ $? -eq 0 ]; then'
-			echo '				sleep 2'
-			echo '			fi'
-			echo '		fi'
-			echo '	fi'
-			echo 'fi'
-		fi
 		echo
-		echo 'execute_command "'"${HOME_DIR}"'/'"${WALLET_INSTALL_DIR}"'/'"${WALLET_PREFIX}"'d -datadir='"${HOME}"'/'"${DATA_INSTALL_DIR}"' -daemon"'
+		echo 'if [ -f "${0%/*}/'"${IP4_CONFIG_NAME}"'" ] || [ -f "${0%/*}/'"${IP6_CONFIG_NAME}"'" ]; then'
+		echo '	ETH_INTERFACE="ens3"'
+		echo
+		echo '	if [ -n "${WAN_IP}" ]; then'
+		echo '		if [ ! -f /sys/class/net/${ETH_INTERFACE}/operstate ]; then'
+		echo '			ETH_INTERFACE="eth0"'
+		echo '		fi'
+		echo
+		echo '		ETH_STATUS=$(cat /sys/class/net/${ETH_INTERFACE}/operstate)'
+		echo
+		echo '		if [ "${ETH_STATUS}" = "up" ]; then'
+		echo '			if [ -f "${0%/*}/'"${IP6_CONFIG_NAME}"'" ]; then'
+		echo '				while [ -z "${IPV6_INT_BASE}" ]; do'
+		echo '					sleep 1'
+		echo '					IPV6_INT_BASE="$(ip -6 addr show dev ${ETH_INTERFACE} | grep inet6 | awk -F '"'"'[ \t]+|/'"'"' '"'"'{print $3}'"'"' | grep -v ^fe80 | grep -v ^::1 | cut -f1-4 -d'"'"':'"'"' | head -1)"'
+		echo '					wait'
+		echo '				done'
+		echo
+		echo '				if [ -z "$({ ip -6 addr | grep -i "${WAN_IP}"; })" ]; then'
+		echo '					ip -6 addr add "${WAN_IP}/64" dev ${ETH_INTERFACE} >/dev/null 2>&1'
+		echo '					if [ $? -eq 0 ]; then'
+		echo '						sleep 2'
+		echo '					fi'
+		echo '				fi'
+		echo '			else'
+		echo '				if [ -z "$({ ip -4 addr | grep -i "${WAN_IP}"; })" ]; then'
+		echo '					ip -4 addr add "${WAN_IP}/23" dev ${ETH_INTERFACE} >/dev/null 2>&1'
+		echo '					if [ $? -eq 0 ]; then'
+		echo '						sleep 2'
+		echo '					fi'
+		echo '				fi'
+		echo '			fi'
+		echo '		fi'
+		echo '	fi'
+		echo 'fi'
+		echo
+		echo 'execute_command "'"${HOME_DIR}"'/'"${WALLET_INSTALL_DIR}"'/'"${WALLET_PREFIX}"'d -datadir='"${HOME}"'/'"${DATA_INSTALL_DIR}"'"'
 	} > ${HOME_DIR}/${WALLET_INSTALL_DIR}/${REBOOT_SCRIPT_NAME}
 	
 	if [ ! -f ${HOME}/${DATA_INSTALL_DIR}/${WALLET_CONFIG_NAME} ]; then
@@ -1015,16 +1151,25 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	
 	if [ "${ARCHIVE_DIR}" = "" ]; then
 		# Move extracted files from the home directory to the install directory
-		mv "${HOME_DIR}/${WALLET_PREFIX}d" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d"
-		mv "${HOME_DIR}/${WALLET_PREFIX}-cli" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli"
+		mv "${HOME}/${WALLET_PREFIX}d" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d"
+		mv "${HOME}/${WALLET_PREFIX}-cli" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli"
 	else
 		# Find the proper files from within the extracted directory and move them to the install directory
-		find ${HOME_DIR}/${ARCHIVE_DIR} -name "${WALLET_PREFIX}d" -type f -exec mv {} "${HOME_DIR}/${WALLET_INSTALL_DIR}/" \;
-		find ${HOME_DIR}/${ARCHIVE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec mv {} "${HOME_DIR}/${WALLET_INSTALL_DIR}/" \;
+		find ${HOME}/${ARCHIVE_DIR} -name "${WALLET_PREFIX}d" -type f -exec mv {} "${HOME_DIR}/${WALLET_INSTALL_DIR}/" \;
+		find ${HOME}/${ARCHIVE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec mv {} "${HOME_DIR}/${WALLET_INSTALL_DIR}/" \;
 		# Remove extracted directory
-		rm -rf "${HOME_DIR}/${ARCHIVE_DIR}"
+		rm -rf "${HOME}/${ARCHIVE_DIR}"
 	fi
 	
+	# Create easier links to the wallet files
+	if [ "$INSTALL_NUM" -eq 1 ]; then
+		ln -s ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d ${HOME_DIR}/${WALLET_PREFIX}d
+		ln -s ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli ${HOME_DIR}/${WALLET_PREFIX}-cli
+	else
+		ln -s ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d ${HOME_DIR}/${WALLET_PREFIX}d${INSTALL_NUM}
+		ln -s ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli ${HOME_DIR}/${WALLET_PREFIX}-cli${INSTALL_NUM}
+	fi
+
 	# Mark wallet files and scripts as executable
 	chmod +x ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d
 	chmod +x ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli
@@ -1082,7 +1227,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				if [ $NEED_RESTART -eq 1 ]; then
 					# Restart other wallet
 					echo "Restart wallet #${i}"
-					execute_command "${HOME_DIR}/${WALLET_DIR_TEST}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_DIR_TEST} -daemon"
+					execute_command "${HOME_DIR}/${WALLET_DIR_TEST}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_DIR_TEST}"
 				fi
 				
 				# Return from loop
@@ -1100,7 +1245,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	if [ -z "$NULLGENKEY" ]; then
 		# Start wallet
 		echo "Temporarily starting new wallet"
-		execute_command "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_INSTALL_DIR} -daemon"
+		execute_command "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_INSTALL_DIR}"
 		# Wait for wallet to load
 		wait_wallet_loaded
 		# Get the genkey value
@@ -1117,7 +1262,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	echo "Wallet setup complete" && echo
 	# Start wallet
 	echo "${CYAN}#####${NONE} Start Wallet ${CYAN}#####${NONE}" && echo
-	execute_command "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_INSTALL_DIR} -daemon"
+	execute_command "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_INSTALL_DIR}"
 	# Wait for wallet to load
 	echo && echo "${CYAN}#####${NONE} Wait for wallet to load ${CYAN}#####${NONE}" && echo
 	wait_wallet_loaded && echo
@@ -1163,9 +1308,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	# NulleX.conf file setup
 	echo && echo "${PURPLE}#####${NONE} NulleX.conf file setup ${PURPLE}#####${NONE}" && echo
 	echo "Add the following lines to your NulleX.conf file in your cold wallet (Tools > Open Wallet Configuration File):" && echo
-	echo "rpcuser=NLX$(pwgen -s 12 1)"
-	echo "rpcpassword=$(pwgen -s 32 1)"
-	echo "rpcallowip=127.0.0.1"
 	echo "server=1"
 	echo "daemon=1"
 	echo "listen=1"
@@ -1190,12 +1332,16 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	
 	if [ "$INSTALL_NUM" -eq 1 ]; then
 		echo "${CYAN}Uninstall wallet:${NONE} sudo sh ${0##*/} -t u"
-		echo "${CYAN}Manually stop wallet:${NONE} ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli stop"
-		echo "${CYAN}Manually start wallet:${NONE} ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d -daemon"
+		echo "${CYAN}Manually stop wallet:${NONE} ${WALLET_PREFIX}-cli stop"
+		echo "${CYAN}Manually start wallet:${NONE} ${WALLET_PREFIX}d"
+		echo "${CYAN}View wallets current block:${NONE} ${WALLET_PREFIX}-cli getblockcount"
+		echo "${CYAN}Masternode status check:${NONE} ${WALLET_PREFIX}-cli masternode status"
 	else
 		echo "${CYAN}Uninstall wallet:${NONE} sudo sh ${0##*/} -t u -n $INSTALL_NUM"
-		echo "${CYAN}Manually stop wallet:${NONE} ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli -datadir=${HOME}/${DATA_INSTALL_DIR} stop"
-		echo "${CYAN}Manually start wallet:${NONE} ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d -datadir=${HOME}/${DATA_INSTALL_DIR} -daemon"
+		echo "${CYAN}Manually stop wallet:${NONE} ${WALLET_PREFIX}-cli${INSTALL_NUM} -datadir=${HOME}/${DATA_INSTALL_DIR} stop"
+		echo "${CYAN}Manually start wallet:${NONE} ${WALLET_PREFIX}d${INSTALL_NUM} -datadir=${HOME}/${DATA_INSTALL_DIR}"
+		echo "${CYAN}View wallets current block:${NONE} ${WALLET_PREFIX}-cli${INSTALL_NUM} -datadir=${HOME}/${DATA_INSTALL_DIR} getblockcount"
+		echo "${CYAN}Masternode status check:${NONE} ${WALLET_PREFIX}-cli${INSTALL_NUM} -datadir=${HOME}/${DATA_INSTALL_DIR} masternode status"
 	fi	
 	
 	echo && echo "${ORANGE}===================================================================${NONE}"
@@ -1222,19 +1368,28 @@ else
 	# Check if wallet is currently running and stop it if running	
 	echo && check_stop_wallet "${WALLET_INSTALL_DIR}" "${DATA_INSTALL_DIR}"
 
+	# Check if the wallet created an IPv4 address
+	if [ -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME}" ]; then
+		# Initialize network variables for use below
+		init_network
+		# Unregister the IPv4 address
+		unregisterIP4Address $(cat "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP4_CONFIG_NAME}")
+	fi
+	
 	# Check if the wallet created an IPv6 address
 	if [ -f "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}" ]; then
 		# Initialize IPv6 variables for use below
 		init_ipv6
 		# Unregister the IPv6 address
-		ip -6 addr del "${IPV6_INT_BASE}:${NETWORK_BASE_TAG}::${INSTALL_NUM}/64" dev ${ETH_INTERFACE} >/dev/null 2>&1
+		unregisterIP6Address $(cat "${HOME_DIR}/${WALLET_INSTALL_DIR}/${IP6_CONFIG_NAME}")
 	fi
 	
 	# Backup the current rc.local file
 	backup_rc_local
 	# Remove the reboot script for this wallet from the rc.local file
 	grep -v "${HOME_DIR}/${WALLET_INSTALL_DIR}/${REBOOT_SCRIPT_NAME}" ${RC_LOCAL} > ${RC_LOCAL}.new; mv ${RC_LOCAL}.new ${RC_LOCAL}
-
+	# Remove old links to wallet binaries
+	removeWalletLinks
 	# Remove the wallet and data directories
 	rm -rf "${HOME_DIR}/${WALLET_INSTALL_DIR}"
 	rm -rf "${HOME}/${DATA_INSTALL_DIR}"
