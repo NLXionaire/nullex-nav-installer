@@ -1,10 +1,3 @@
--Online wallet check now automaticaly detects and installs new wallet versions without waiting for an updated script
--Symbolic links are now created which allow for shorter paths to wallet files
--Removed the -daemon flag from the nullexd start cmds since daemon=1 is already added to the NulleX.conf file
--New installs now upgrade installed software to latest versions before installing the wallet
--Installer now always tries to install/update required software even when it is detected to be installed (allows out-of-date software packages to be updated to prevent install problems at the sacrifice of a slightly longer install time)
--Removed rpc lines from the NulleX.conf output in the "Final Setup Instructions" section
--Added 'getblockcount' and 'masternode status' cmds to the "Useful commands" output in the "Final Setup Instructions" section
--Fixed the binding issue for vps services that use private ip addresses
--Fixed saving/loading of IPv6 address from saved file
--Public IPv4 address is now registered with the OS for vps services that use private ip addresses
+-Fixed a bug which prevented new installs from installing correctly
+-Improved script version check
+-Uninstalling the last wallet now also removes the wallet source directory for a cleaner uninstall

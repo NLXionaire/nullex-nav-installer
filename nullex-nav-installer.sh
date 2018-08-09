@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v1.0.0
-# Date:    August 7, 2018
+# Version: v1.0.1
+# Date:    August 8, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -13,7 +13,7 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.0"
+readonly SCRIPT_VERSION="1.0.1"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -662,63 +662,80 @@ echo && echo "${CYAN}#####${NONE} Check for script update ${CYAN}#####${NONE}" &
 NEWEST_VERSION=$(curl -s -k "${VERSION_URL}")
 VERSION_LENGTH=$(printf "%s" "${NEWEST_VERSION}" | wc -m)
 
-if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ] && [ "${SCRIPT_VERSION}" != "${NEWEST_VERSION}" ]; then
-	# A new version of the script is available
-	echo "${CYAN}Current script:${NONE}	v${SCRIPT_VERSION}"
-	echo "${CYAN}New script:${NONE} 	v${NEWEST_VERSION}"
-	echo && echo "${CYAN}CHANGES:${NONE}"
-	echo "$(curl -s -k "${NEW_CHANGES_URL}")"
-	echo && echo -n "Would you like to update now? [y/n]: "
-	read -p "" UPDATE_NOW
-    case "$UPDATE_NOW" in
-        y|Y|yes|Yes|YES)
-			# Update to newest version of script
-			echo "Updating, please wait..."
-			# Overwrite the current script with the newest version
-			{
-				echo "$(curl -s -k "${SCRIPT_URL}")"
-			} > ${HOME}/${0##*/}
-			# Ensure script is executable
-			chmod +x ${HOME}/${0##*/}
-			# Fix parameters before restarting
-			case $INSTALL_TYPE in
-				"Install") INSTALL_TYPE="i" ;;
-				*) INSTALL_TYPE="u" ;;
-			esac
-			if [ -n "$NULLGENKEY" ]; then
-				NULLGENKEY=" -g ${NULLGENKEY}"
-			fi			
-			if [ -n "$WAN_IP" ]; then
-				WAN_IP=" -i ${WAN_IP}"
-			fi
-			if [ -n "$PORT_NUMBER" ]; then
-				PORT_NUMBER=" -p ${PORT_NUMBER}"
-			fi
-			if [ "$SWAP" -eq 0 ]; then
-				SWAP=" -s"
-			else
-				SWAP=""
-			fi
-			if [ "$FIREWALL" -eq 0 ]; then
-				FIREWALL=" -f"
-			else
-				FIREWALL=""
-			fi
-			if [ "$FAIL2BAN" -eq 0 ]; then
-				FAIL2BAN=" -b"
-			else
-				FAIL2BAN=""
-			fi
-			if [ "$SYNCCHAIN" -eq 0 ]; then
-				SYNCCHAIN=" -c"
-			else
-				SYNCCHAIN=""
-			fi
-			# Restart the newest version of the script
-			eval "sh ${HOME}/${0##*/} -t ${INSTALL_TYPE} -w ${WALLET_TYPE}${NULLGENKEY} -N ${NET_TYPE}${WAN_IP}${PORT_NUMBER} -n ${INSTALL_NUM}${SWAP}${FIREWALL}${FAIL2BAN}${SYNCCHAIN}"
-			exit
-			;;
-    esac
+if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ]; then
+	# Split current script version
+	TEMP_VERSION="${SCRIPT_VERSION}"
+	CURRENT_BUILD_VERSION=$({ echo "${TEMP_VERSION}" | awk -v FS="." '{ print $NF }'; })
+	TEMP_VERSION=$(echo "${TEMP_VERSION}" | cut -c1-`expr ${#TEMP_VERSION} - ${#CURRENT_BUILD_VERSION} - 1` | head -1)
+	CURRENT_MINOR_VERSION=$({ echo "${TEMP_VERSION}" | awk -v FS="." '{ print $NF }'; })
+	CURRENT_MAJOR_VERSION=$(echo "${TEMP_VERSION}" | cut -c1-`expr ${#TEMP_VERSION} - ${#CURRENT_MINOR_VERSION} - 1` | head -1)
+	# Split new script version
+	TEMP_VERSION="${NEWEST_VERSION}"
+	NEWEST_BUILD_VERSION=$({ echo "${TEMP_VERSION}" | awk -v FS="." '{ print $NF }'; })
+	TEMP_VERSION=$(echo "${TEMP_VERSION}" | cut -c1-`expr ${#TEMP_VERSION} - ${#NEWEST_BUILD_VERSION} - 1` | head -1)
+	NEWEST_MINOR_VERSION=$({ echo "${TEMP_VERSION}" | awk -v FS="." '{ print $NF }'; })
+	NEWEST_MAJOR_VERSION=$(echo "${TEMP_VERSION}" | cut -c1-`expr ${#TEMP_VERSION} - ${#NEWEST_MINOR_VERSION} - 1` | head -1)
+
+	if [ "${NEWEST_MAJOR_VERSION}" -gt "${CURRENT_MAJOR_VERSION}" ] || ([ "${NEWEST_MAJOR_VERSION}" -eq "${CURRENT_MAJOR_VERSION}" ] && ([ "${NEWEST_MINOR_VERSION}" -gt "${CURRENT_MINOR_VERSION}" ] || ([ "${NEWEST_MINOR_VERSION}" -eq "${CURRENT_MINOR_VERSION}" ] && [ "${NEWEST_BUILD_VERSION}" -gt "${CURRENT_BUILD_VERSION}" ]))); then
+		# A new version of the script is available
+		echo "${CYAN}Current script:${NONE}	v${SCRIPT_VERSION}"
+		echo "${CYAN}New script:${NONE} 	v${NEWEST_VERSION}"
+		echo && echo "${CYAN}CHANGES:${NONE}"
+		echo "$(curl -s -k "${NEW_CHANGES_URL}")"
+		echo && echo -n "Would you like to update now? [y/n]: "
+		read -p "" UPDATE_NOW
+		case "$UPDATE_NOW" in
+			y|Y|yes|Yes|YES)
+				# Update to newest version of script
+				echo "Updating, please wait..."
+				# Overwrite the current script with the newest version
+				{
+					echo "$(curl -s -k "${SCRIPT_URL}")"
+				} > ${HOME}/${0##*/}
+				# Ensure script is executable
+				chmod +x ${HOME}/${0##*/}
+				# Fix parameters before restarting
+				case $INSTALL_TYPE in
+					"Install") INSTALL_TYPE="i" ;;
+					*) INSTALL_TYPE="u" ;;
+				esac
+				if [ -n "$NULLGENKEY" ]; then
+					NULLGENKEY=" -g ${NULLGENKEY}"
+				fi			
+				if [ -n "$WAN_IP" ]; then
+					WAN_IP=" -i ${WAN_IP}"
+				fi
+				if [ -n "$PORT_NUMBER" ]; then
+					PORT_NUMBER=" -p ${PORT_NUMBER}"
+				fi
+				if [ "$SWAP" -eq 0 ]; then
+					SWAP=" -s"
+				else
+					SWAP=""
+				fi
+				if [ "$FIREWALL" -eq 0 ]; then
+					FIREWALL=" -f"
+				else
+					FIREWALL=""
+				fi
+				if [ "$FAIL2BAN" -eq 0 ]; then
+					FAIL2BAN=" -b"
+				else
+					FAIL2BAN=""
+				fi
+				if [ "$SYNCCHAIN" -eq 0 ]; then
+					SYNCCHAIN=" -c"
+				else
+					SYNCCHAIN=""
+				fi
+				# Restart the newest version of the script
+				eval "sh ${HOME}/${0##*/} -t ${INSTALL_TYPE} -w ${WALLET_TYPE}${NULLGENKEY} -N ${NET_TYPE}${WAN_IP}${PORT_NUMBER} -n ${INSTALL_NUM}${SWAP}${FIREWALL}${FAIL2BAN}${SYNCCHAIN}"
+				exit
+				;;
+		esac
+	else
+		echo "No new update found"
+	fi
 else
 	echo "No new update found"
 fi
@@ -941,7 +958,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		
 		i=$(( i + 1 ))
 	done
-	
+
 	# Remove old links to wallet binaries
 	removeWalletLinks
 
@@ -1034,12 +1051,14 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			# Return to previous directory
 			eval "cd ${CURRENT_DIR}"
 			# Move wallet files
-			find ${SOURCE_DIR} -name "${WALLET_PREFIX}d" -type f -exec mv {} "${HOME_DIR}/" \;
-			find ${SOURCE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec mv {} "${HOME_DIR}/" \;
+			find ${SOURCE_DIR} -name "${WALLET_PREFIX}d" -type f -exec mv {} "${HOME}/" \;
+			find ${SOURCE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec mv {} "${HOME}/" \;
 			# Change directory to the wallet install location
-			eval "cd ${HOME_DIR}"
+			eval "cd ${HOME}"
 			# Add wallet files to a new archive that can be used to install faster for 2+ installs
 			tar -cvzf ${WALLET_FILE} ${WALLET_PREFIX}d ${WALLET_PREFIX}-cli >/dev/null 2>&1
+			# Move the archive into the root wallet directory
+			mv "${WALLET_FILE}" "${HOME_DIR}/${WALLET_FILE}"
 			# Return to previous directory
 			eval "cd ${CURRENT_DIR}"
 			echo "Done" && echo
@@ -1393,6 +1412,27 @@ else
 	# Remove the wallet and data directories
 	rm -rf "${HOME_DIR}/${WALLET_INSTALL_DIR}"
 	rm -rf "${HOME}/${DATA_INSTALL_DIR}"
+	
+	# Check if there are any more installs
+	FULL_UNINSTALL=1
+	i=1; while [ $i -le 99 ]; do
+		case $i in
+			1) DIR_TEST="${DEFAULT_WALLET_DIR}" ;;
+			*) DIR_TEST="${DEFAULT_WALLET_DIR}${i}" ;;
+		esac
+		
+		if [ "${FULL_UNINSTALL}" -eq 1 ] && [ -d "${HOME_DIR}/${DIR_TEST}" ]; then
+			# There is still an existing wallet
+			FULL_UNINSTALL=0
+		fi
+		
+		i=$(( i + 1 ))
+	done
+	
+	if [ "${FULL_UNINSTALL}" -eq 1 ]; then
+		# Remove the source directory if it exists to ensure that all data is completely uninstalled
+		rm -rf "${HOME}/${SOURCE_DIR}"
+	fi
 fi
 
 echo && echo "${GREEN}#####${NONE} ${INSTALL_TYPE}ation complete ${GREEN}#####${NONE}" && echo
