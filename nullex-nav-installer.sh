@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v1.0.1
-# Date:    August 8, 2018
+# Version: v1.0.2
+# Date:    August 27, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -13,7 +13,7 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.1"
+readonly SCRIPT_VERSION="1.0.2"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -25,7 +25,7 @@ readonly IP4_CONFIG_NAME=".ip4.conf"
 readonly IP6_CONFIG_NAME=".ip6.conf"
 readonly REBOOT_SCRIPT_NAME=".reboot.sh"
 readonly WALLET_PREFIX="nullex"
-readonly BLOCKCOUNT_URL=""
+readonly BLOCKCOUNT_URL="https://explorer.nullex.io/api/getblockcount"
 readonly RELEASES_URL="https://github.com/white92d15b7/NLX/releases"
 readonly RELEASES_VERSION_START='<span class="css-truncate-target">'
 readonly RELEASES_VERSION_END="</span>"
@@ -293,7 +293,7 @@ write_config() {
 		echo "listen=1"
 		echo "server=1"
 		echo "daemon=1"
-		echo "maxconnections=256"
+		echo "maxconnections=4"
 		echo "externalip=${CONFIG_ADDRESS}"
 		
 		# Check if the ip address can be bound to the wallet
@@ -309,6 +309,13 @@ write_config() {
 			echo "masternodeaddr=${CONFIG_ADDRESS}"		
 			echo "masternodeprivkey=$NULLGENKEY"
 		fi
+		
+		# Add seed nodes
+		echo "addnode=172.81.178.152"
+		echo "addnode=172.81.178.14"
+		echo "addnode=170.75.163.187"
+		echo "addnode=172.81.178.52"
+		echo "addnode=172.81.178.95"
 	} > ${HOME}/${DATA_INSTALL_DIR}/${WALLET_CONFIG_NAME}
 }
 
@@ -824,28 +831,9 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		wait
 	done
 	printf "\r                                      "
-	# Check if this script has ever been run before
-	FIRST_RUN=1
-	i=1; while [ $i -le 99 ]; do
-		case $i in
-			1) DIR_TEST="${DEFAULT_WALLET_DIR}" ;;
-			*) DIR_TEST="${DEFAULT_WALLET_DIR}${i}" ;;
-		esac
-		
-		if [ "${FIRST_RUN}" -eq 1 ] && [ -d "${HOME_DIR}/${DIR_TEST}" ]; then
-			# There is an existing wallet so this is not the first install
-			FIRST_RUN=0
-		fi
-		
-		i=$(( i + 1 ))
-	done
-	
-	# if this is the first run then update package lists, repositories and new software versions
-	if [ "${FIRST_RUN}" -eq 1 ]; then
-		echo && echo "${CYAN}#####${NONE} Updating package lists, repositories and new software versions ${CYAN}#####${NONE}" && echo
-		apt-get update -y && apt-get upgrade -y
-	fi
-	echo
+	# Update package lists, repositories and new software versions to keep the vps up-to-date
+	echo && echo "${CYAN}#####${NONE} Updating package lists, repositories and new software versions ${CYAN}#####${NONE}" && echo
+	apt-get update -y && apt-get upgrade -y && apt-get dist-upgrade -y && echo
 	
 	if [ "$SWAP" -eq 1 ]; then
 		# Install and configure disk swap file
@@ -1044,7 +1032,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				eval "./autogen.sh"
 				eval "./configure --with-libressl --without-gui"
 			fi
-			
+
 			# Make the files
 			eval "make"
 			echo && echo "${CYAN}#####${NONE} Finalizing build ${CYAN}#####${NONE}" && echo
@@ -1332,6 +1320,12 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	echo "listen=1"
 	echo "masternode=1"
 	echo "masternodeprivkey=${NULLGENKEY}"
+	echo "maxconnections=4"
+	echo "addnode=172.81.178.152"
+	echo "addnode=172.81.178.14"
+	echo "addnode=170.75.163.187"
+	echo "addnode=172.81.178.52"
+	echo "addnode=172.81.178.95"
 	# masternode.conf file setup
 	echo && echo "${PURPLE}#####${NONE} masternode.conf file setup ${PURPLE}#####${NONE}" && echo
 	echo "Add the following line to the bottom of your masternode.conf file in your cold wallet (Tools > Open Masternode Configuration File):" && echo
