@@ -1,5 +1,4 @@
 1.0.2 (August 27, 2018)
--Added block explorer syncing
 -Installer now checks for operating system updates every time and installs any new updates automatically
 -The NAV config file now has maxconnections set to 4 as well as has seed nodes added for faster syncing
 -The final setup instructions for the cold wallet NulleX.conf file now set maxconnections to 4 and have seed nodes added for faster syncing
