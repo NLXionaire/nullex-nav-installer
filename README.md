@@ -36,6 +36,7 @@ To save time on 2+ installs, the wallet binaries are archived in the wallet dire
 ## Future features/Known issues
 
 - Replace the wallet binaries with official versions
+- Enable blockchain sync monitoring once an official block explorer website is made available
 - Updating a previously installed wallet needs to remove previous settings before applying new settings
 - Updating a previously installed wallet needs to be smart enough to get the current configuration values instead of using 'new install' defaults
 - Properly shutdown all wallets automatically when a reboot or shutdown command is issued to prevent blockchain corruption

@@ -25,7 +25,7 @@ readonly IP4_CONFIG_NAME=".ip4.conf"
 readonly IP6_CONFIG_NAME=".ip6.conf"
 readonly REBOOT_SCRIPT_NAME=".reboot.sh"
 readonly WALLET_PREFIX="nullex"
-readonly BLOCKCOUNT_URL="https://explorer.nullex.io/api/getblockcount"
+readonly BLOCKCOUNT_URL=""
 readonly RELEASES_URL="https://github.com/white92d15b7/NLX/releases"
 readonly RELEASES_VERSION_START='<span class="css-truncate-target">'
 readonly RELEASES_VERSION_END="</span>"
