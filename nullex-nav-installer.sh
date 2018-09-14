@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v1.0.2
-# Date:    August 27, 2018
+# Version: v1.0.3
+# Date:    September 14, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -13,7 +13,7 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.2"
+readonly SCRIPT_VERSION="1.0.3"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -45,7 +45,7 @@ readonly HOME_DIR="/usr/local/bin"
 readonly VERSION_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/VERSION"
 readonly SCRIPT_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh"
 readonly NEW_CHANGES_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/NEW_CHANGES"
-WALLET_VERSION="1.3.4"
+WALLET_VERSION="1.3.6"
 WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-linux.tar.gz"
 
 # Default variables
@@ -293,7 +293,6 @@ write_config() {
 		echo "listen=1"
 		echo "server=1"
 		echo "daemon=1"
-		echo "maxconnections=4"
 		echo "externalip=${CONFIG_ADDRESS}"
 		
 		# Check if the ip address can be bound to the wallet
@@ -309,13 +308,6 @@ write_config() {
 			echo "masternodeaddr=${CONFIG_ADDRESS}"		
 			echo "masternodeprivkey=$NULLGENKEY"
 		fi
-		
-		# Add seed nodes
-		echo "addnode=172.81.178.152"
-		echo "addnode=172.81.178.14"
-		echo "addnode=170.75.163.187"
-		echo "addnode=172.81.178.52"
-		echo "addnode=172.81.178.95"
 	} > ${HOME}/${DATA_INSTALL_DIR}/${WALLET_CONFIG_NAME}
 }
 
@@ -972,6 +964,13 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				echo "${CYAN}#####${NONE} Updating local wallet source code ${CYAN}#####${NONE}" && echo
 				# Change directory into existing repo
 				eval "cd ${SOURCE_DIR}"
+				# TEMP - Check if this is pre 1.3.6 source
+				if [ -n "$({ grep -rnw "src/version.h" -e 'static const int PROTOCOL_VERSION = 70912;'; })" ]; then
+					# Pre 1.3.6 source = Discard all changes and rebuild the entire source
+					eval "git checkout ."
+					INSTALL_DEPENDENCIES=1
+					BUILD_SOURCE=1
+				fi
 				# Pull the newest updates
 				exec 5>&1 && SOME_TEST=$(git pull 2>&1 | tee /dev/fd/5;)
 				# Check if the repo is already up to date
@@ -1039,8 +1038,8 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			# Return to previous directory
 			eval "cd ${CURRENT_DIR}"
 			# Move wallet files
-			find ${SOURCE_DIR} -name "${WALLET_PREFIX}d" -type f -exec mv {} "${HOME}/" \;
-			find ${SOURCE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec mv {} "${HOME}/" \;
+			find ${SOURCE_DIR} -name "${WALLET_PREFIX}d" -type f -exec strip {} \; -exec mv {} "${HOME}/" \;
+			find ${SOURCE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec strip {} \; -exec mv {} "${HOME}/" \;
 			# Change directory to the wallet install location
 			eval "cd ${HOME}"
 			# Add wallet files to a new archive that can be used to install faster for 2+ installs
@@ -1312,20 +1311,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	echo && echo "${ORANGE}===================================================================${NONE}"
 	echo "${ORANGE}                     Final setup instructions${NONE}"
 	echo "${ORANGE}===================================================================${NONE}"
-	# NulleX.conf file setup
-	echo && echo "${PURPLE}#####${NONE} NulleX.conf file setup ${PURPLE}#####${NONE}" && echo
-	echo "Add the following lines to your NulleX.conf file in your cold wallet (Tools > Open Wallet Configuration File):" && echo
-	echo "server=1"
-	echo "daemon=1"
-	echo "listen=1"
-	echo "masternode=1"
-	echo "masternodeprivkey=${NULLGENKEY}"
-	echo "maxconnections=4"
-	echo "addnode=172.81.178.152"
-	echo "addnode=172.81.178.14"
-	echo "addnode=170.75.163.187"
-	echo "addnode=172.81.178.52"
-	echo "addnode=172.81.178.95"
 	# masternode.conf file setup
 	echo && echo "${PURPLE}#####${NONE} masternode.conf file setup ${PURPLE}#####${NONE}" && echo
 	echo "Add the following line to the bottom of your masternode.conf file in your cold wallet (Tools > Open Masternode Configuration File):" && echo
