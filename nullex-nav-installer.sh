@@ -977,6 +977,12 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				if [ "${SOME_TEST}" != "Already up-to-date." ]; then
 					INSTALL_DEPENDENCIES=1
 				fi
+				# Check if there is a make file
+				if [ ! -f "${HOME}/${SOURCE_DIR}/Makefile" ]; then
+					# Make file is missing = need to rebuild the entire source
+					INSTALL_DEPENDENCIES=1
+					BUILD_SOURCE=1
+				fi
 			else
 				# Source directory does not exist
 				INSTALL_DEPENDENCIES=1

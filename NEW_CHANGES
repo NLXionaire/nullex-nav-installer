@@ -1,4 +1,1 @@
--Added support for new wallet v1.3.6
--Building the wallet from source now strips debug symbols from nullexd and nullex-cli to make for smaller file sizes
--Removed the maxconnections and addnode lines from the NAV config file
--Removed the entire NulleX.conf section from the final setup instructions for the cold wallet as it is no longer needed
+-Fixed a bug which caused the script to continue without building the wallet when the make file was missing
