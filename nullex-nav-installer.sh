@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v1.0.3
-# Date:    September 14, 2018
+# Version: v1.0.4
+# Date:    September 16, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -13,7 +13,7 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.3"
+readonly SCRIPT_VERSION="1.0.4"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
