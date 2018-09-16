@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Version: v1.0.4
+# Version: v1.0.5
 # Date:    September 16, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
@@ -13,7 +13,7 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.4"
+readonly SCRIPT_VERSION="1.0.5"
 readonly WALLET_URL=""
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
@@ -45,7 +45,7 @@ readonly HOME_DIR="/usr/local/bin"
 readonly VERSION_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/VERSION"
 readonly SCRIPT_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh"
 readonly NEW_CHANGES_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/NEW_CHANGES"
-WALLET_VERSION="1.3.6"
+WALLET_VERSION="1.3.6.1"
 WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-linux.tar.gz"
 
 # Default variables
@@ -1027,9 +1027,12 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			if [ "${BUILD_SOURCE}" -eq 1 ]; then
 				# Remember current directory
 				CURRENT_DIR=${PWD}
-				# Download the github repo
-				echo "${CYAN}#####${NONE} Downloading source code ${CYAN}#####${NONE}" && echo
-				eval "git clone ${SOURCE_URL} ${SOURCE_DIR}"
+				# Check if source directory exists
+				if [ ! -d "${HOME}/${SOURCE_DIR}" ]; then
+					# Download the github repo
+					echo "${CYAN}#####${NONE} Downloading source code ${CYAN}#####${NONE}" && echo
+					eval "git clone ${SOURCE_URL} ${SOURCE_DIR}"
+				fi
 				# Change directory into new repo
 				eval "cd ${SOURCE_DIR}"
 				# Build wallet from source code

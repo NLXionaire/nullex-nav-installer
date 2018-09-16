@@ -1,1 +1,1 @@
--Fixed a bug which caused the script to continue without building the wallet when the make file was missing
+-Added support for new wallet v1.3.6.1
