@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Version: v1.0.5
+# Version: v1.0.6
 # Date:    September 16, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
@@ -13,11 +13,11 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.5"
-readonly WALLET_URL=""
+readonly SCRIPT_VERSION="1.0.6"
+readonly WALLET_URL="https://nullex.io/wp-content/uploads/2018/09/"
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
-readonly ARCHIVE_DIR=""
+readonly ARCHIVE_DIR="nullex-1.3.6"
 readonly DEFAULT_WALLET_DIR="NulleX"
 readonly DEFAULT_DATA_DIR=".nullexqt"
 readonly WALLET_CONFIG_NAME="NulleX.conf"
@@ -46,7 +46,7 @@ readonly VERSION_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-in
 readonly SCRIPT_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh"
 readonly NEW_CHANGES_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/NEW_CHANGES"
 WALLET_VERSION="1.3.6.1"
-WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-linux.tar.gz"
+WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-x86_64-linux-gnu.tar.gz"
 
 # Default variables
 NET_TYPE=6
@@ -335,7 +335,7 @@ wait_wallet_loaded() {
 online_wallet_check() {
 	echo && echo "${CYAN}#####${NONE} Check for wallet update ${CYAN}#####${NONE}" && echo
 	# Get the github releases html source
-	RELEASES_SOURCE=$(curl -s -k "${RELEASES_URL}")
+	RELEASES_SOURCE=$(curl -s -k "${RELEASES_URL}?$(date +%s)")
 	# Find the first/most recent version and drop off any text before that
 	RELEASES_SOURCE=${RELEASES_SOURCE#*${RELEASES_VERSION_START}}
 
@@ -367,7 +367,7 @@ online_wallet_check() {
 	fi
 	
 	# Setup the wallet archive filename
-	WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-linux.tar.gz"
+	WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-x86_64-linux-gnu.tar.gz"
 }
 
 unregisterIP4Address() {
@@ -658,7 +658,7 @@ echo -n "${GREY}///////////////////////////////////////////////////////${NONE}"
 # Check for an updated version of the script
 sleep 2 && echo
 echo && echo "${CYAN}#####${NONE} Check for script update ${CYAN}#####${NONE}" && echo
-NEWEST_VERSION=$(curl -s -k "${VERSION_URL}")
+NEWEST_VERSION=$(curl -s -k "${VERSION_URL}?$(date +%s)")
 VERSION_LENGTH=$(printf "%s" "${NEWEST_VERSION}" | wc -m)
 
 if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ]; then
@@ -680,7 +680,7 @@ if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ]; then
 		echo "${CYAN}Current script:${NONE}	v${SCRIPT_VERSION}"
 		echo "${CYAN}New script:${NONE} 	v${NEWEST_VERSION}"
 		echo && echo "${CYAN}CHANGES:${NONE}"
-		echo "$(curl -s -k "${NEW_CHANGES_URL}")"
+		echo "$(curl -s -k "${NEW_CHANGES_URL}?$(date +%s)")"
 		echo && echo -n "Would you like to update now? [y/n]: "
 		read -p "" UPDATE_NOW
 		case "$UPDATE_NOW" in
@@ -689,7 +689,7 @@ if [ ${VERSION_LENGTH} -gt 0 ] && [ ${VERSION_LENGTH} -lt 10 ]; then
 				echo "Updating, please wait..."
 				# Overwrite the current script with the newest version
 				{
-					echo "$(curl -s -k "${SCRIPT_URL}")"
+					echo "$(curl -s -k "${SCRIPT_URL}?$(date +%s)")"
 				} > ${HOME}/${0##*/}
 				# Ensure script is executable
 				chmod +x ${HOME}/${0##*/}

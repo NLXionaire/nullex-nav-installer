@@ -1,1 +1,2 @@
--Added support for new wallet v1.3.6.1
+-The binary wallet is now downloaded and installed by default for a faster install
+-Fixed caching issues with the script update
