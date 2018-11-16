@@ -1,3 +1,11 @@
+1.0.7 (November 16, 2018)
+-Added support for new wallet v1.3.8
+-Added a visual block explorer sync monitor at the end of the install
+-Fixed and improved the online wallet check that automaticaly detects and installs new wallet versions without waiting for an updated script
+-Fix for locked files during operating system update checks
+-The wallet url is now tested before downloading and if the file is not available the installer automatically defaults to install from source
+-Added support for interface enp0s3
+
 1.0.6 (September 17, 2018)
 -The binary wallet is now downloaded and installed by default for a faster install
 -Fixed caching issues with the script update

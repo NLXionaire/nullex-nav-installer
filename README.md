@@ -1,6 +1,6 @@
 # NulleX NAV Installer
 
-### v1.0.6
+### v1.0.7
 #### IMPORTANT NOTE 1:
 The original default/fastest method of installing a NAV wallet is by using precompiled binaries but this ability has been temporarily disabled due to the fact that official binaries have not yet been released for the linux wallet. Therefore the install process is temporarily defaulted to building the wallet from source, which takes significantly much more time and uses more hard drive space, etc. The default will be reverted back to the faster install process as soon as proper binaries can be procured.
 
@@ -35,8 +35,6 @@ To save time on 2+ installs, the wallet binaries are archived in the wallet dire
 
 ## Future features/Known issues
 
-- Replace the wallet binaries with official versions
-- Enable blockchain sync monitoring once an official block explorer website is made available
 - Updating a previously installed wallet needs to remove previous settings before applying new settings
 - Updating a previously installed wallet needs to be smart enough to get the current configuration values instead of using 'new install' defaults
 - Properly shutdown all wallets automatically when a reboot or shutdown command is issued to prevent blockchain corruption
