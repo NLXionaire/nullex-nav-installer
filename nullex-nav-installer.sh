@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v1.0.6
-# Date:    September 16, 2018
+# Version: v1.0.7
+# Date:    November 16, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -13,22 +13,21 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.6"
-readonly WALLET_URL="https://nullex.io/wp-content/uploads/2018/09/"
+readonly SCRIPT_VERSION="1.0.7"
+readonly WALLET_URL_TEMPLATE="https://github.com/white92d15b7/NLX/releases/download/\${WALLET_VERSION}/"
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
-readonly ARCHIVE_DIR="nullex-1.3.6"
+readonly ARCHIVE_DIR="nullex-1.3.8"
 readonly DEFAULT_WALLET_DIR="NulleX"
 readonly DEFAULT_DATA_DIR=".nullexqt"
 readonly WALLET_CONFIG_NAME="NulleX.conf"
 readonly IP4_CONFIG_NAME=".ip4.conf"
 readonly IP6_CONFIG_NAME=".ip6.conf"
 readonly REBOOT_SCRIPT_NAME=".reboot.sh"
+readonly WALLET_FILE_TEMPLATE="\${WALLET_PREFIX}-\${WALLET_VERSION}-x86_64-linux-gnu.tar.gz"
 readonly WALLET_PREFIX="nullex"
-readonly BLOCKCOUNT_URL=""
-readonly RELEASES_URL="https://github.com/white92d15b7/NLX/releases"
-readonly RELEASES_VERSION_START='<span class="css-truncate-target">'
-readonly RELEASES_VERSION_END="</span>"
+readonly BLOCKCOUNT_URL="https://explorer.nullex.io/api/getblockcount"
+readonly RELEASES_URL="https://api.github.com/repos/white92d15b7/NLX/releases"
 readonly REQUIRE_GENERATE_CONF=0
 readonly NONE="\033[00m"
 readonly ORANGE="\033[00;33m"
@@ -45,8 +44,7 @@ readonly HOME_DIR="/usr/local/bin"
 readonly VERSION_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/VERSION"
 readonly SCRIPT_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh"
 readonly NEW_CHANGES_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/NEW_CHANGES"
-WALLET_VERSION="1.3.6.1"
-WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-x86_64-linux-gnu.tar.gz"
+WALLET_VERSION="1.3.8"
 
 # Default variables
 NET_TYPE=6
@@ -149,6 +147,7 @@ help_menu() {
 
 begins_with() { case $2 in "$1"*) true;; *) false;; esac; }
 contains() { case $2 in *"$1"*) true;; *) false;; esac; }
+str_replace() { echo `echo $1 | sed 's/'"${2}"'/'"${3}"'/g'`; }
 
 strindex() {
   x="${1%%$2*}"
@@ -243,6 +242,12 @@ init_network() {
 		ETH_INTERFACE="eth0"
 	fi
 
+	# If the interface is still not found check enp0s3 as the last resort
+	if [ ! -f /sys/class/net/${ETH_INTERFACE}/operstate ]; then
+		# eth0 is not available so try enp0s3
+		ETH_INTERFACE="enp0s3"
+	fi
+
 	# Get the current interface state
 	ETH_STATUS=$(cat /sys/class/net/${ETH_INTERFACE}/operstate)
 
@@ -334,16 +339,20 @@ wait_wallet_loaded() {
 
 online_wallet_check() {
 	echo && echo "${CYAN}#####${NONE} Check for wallet update ${CYAN}#####${NONE}" && echo
-	# Get the github releases html source
-	RELEASES_SOURCE=$(curl -s -k "${RELEASES_URL}?$(date +%s)")
-	# Find the first/most recent version and drop off any text before that
-	RELEASES_SOURCE=${RELEASES_SOURCE#*${RELEASES_VERSION_START}}
-
-	# Check if a match is found
-	if [ "$(strindex "${RELEASES_SOURCE}" "${RELEASES_VERSION_END}")" -gt -1 ]; then
-		# Scrape the newest wallet release version # from the github html
-		NEW_WALLET_VERSION=$(echo "${RELEASES_SOURCE}" | cut -c1-$(strindex "${RELEASES_SOURCE}" "${RELEASES_VERSION_END}") | head -1)
-	fi
+	# Get the github releases json source
+	NEW_WALLET_VERSION=$({ curl -sL "${RELEASES_URL}?$(date +%s)" | awk -F"," -v k="tag_name" '{
+		gsub(/{|}/,"")
+		for(i=1;i<=NF;i++){
+			if ( $i ~ k ){
+				print $i;
+				exit;
+			}
+		}
+	}'; });
+	# Remove field header
+	NEW_WALLET_VERSION=$({ str_replace "${NEW_WALLET_VERSION}" '"tag_name":' ""; });
+	# Remove surrounding quotes
+	NEW_WALLET_VERSION=$({ str_replace "${NEW_WALLET_VERSION}" '"' ""; });
 
 	# Check if the wallet version # is blank or a very long string as that would usually indicate a problem
 	if [ "${#NEW_WALLET_VERSION}" -gt 0 ] && [ "${#NEW_WALLET_VERSION}" -lt 16 ]; then
@@ -366,8 +375,8 @@ online_wallet_check() {
 		echo "No new update found"
 	fi
 	
-	# Setup the wallet archive filename
-	WALLET_FILE="${WALLET_PREFIX}-${WALLET_VERSION}-x86_64-linux-gnu.tar.gz"
+	# Set the wallet archive filename based on the template
+	WALLET_FILE=$({ str_replace "$({ str_replace "${WALLET_FILE_TEMPLATE}" "\${WALLET_PREFIX}" "${WALLET_PREFIX}"; })" "\${WALLET_VERSION}" "${WALLET_VERSION}"; });
 }
 
 unregisterIP4Address() {
@@ -766,7 +775,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	
 	if [ "${WALLET_TYPE}" = "b" ]; then
 		echo "${CYAN}Wallet Type:${NONE}		Build from source"
-	elif [ "${WALLET_TYPE}" = "d" ] && [ -n "${WALLET_URL}" ]; then
+	elif [ "${WALLET_TYPE}" = "d" ] && [ -n "${WALLET_URL_TEMPLATE}" ] && [ "$( curl -w %{http_code} -s --output /dev/null "$({ str_replace "${WALLET_URL_TEMPLATE}" "\${WALLET_VERSION}" "${WALLET_VERSION}"; })${WALLET_FILE}")" -eq 302 ]; then
 		echo "${CYAN}Wallet Type:${NONE}		Download"
 	else
 		WALLET_TYPE="b"
@@ -812,8 +821,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	fi
 	
 	# Wait for timeout
-	IFS=:
-	set -- $*
 	echo
 	while [ $WAIT_TIMEOUT -gt 0 ]
 	do
@@ -825,7 +832,9 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 	printf "\r                                      "
 	# Update package lists, repositories and new software versions to keep the vps up-to-date
 	echo && echo "${CYAN}#####${NONE} Updating package lists, repositories and new software versions ${CYAN}#####${NONE}" && echo
-	apt-get update -y && apt-get upgrade -y && apt-get dist-upgrade -y && echo
+	apt-get update
+	apt-get upgrade -y
+	apt-get dist-upgrade -y && echo
 	
 	if [ "$SWAP" -eq 1 ]; then
 		# Install and configure disk swap file
@@ -946,8 +955,7 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		if [ "$WALLET_TYPE" = "d" ]; then
 			# Download wallet
 			echo "${CYAN}#####${NONE} Download wallet ${CYAN}#####${NONE}" && echo
-			wget -q "${WALLET_URL}${WALLET_FILE}" -O "${WALLET_BASE_DIR}/${WALLET_FILE}" --show-progress
-
+			wget -q "$({ str_replace "${WALLET_URL_TEMPLATE}" "\${WALLET_VERSION}" "${WALLET_VERSION}"; })${WALLET_FILE}" -O "${WALLET_BASE_DIR}/${WALLET_FILE}" --show-progress
 			# Ensure wallet downloaded successfully
 			if [ ! -f "${WALLET_BASE_DIR}/${WALLET_FILE}" ] || [ $(stat -c%s "${WALLET_BASE_DIR}/${WALLET_FILE}") -eq 0 ]; then
 				error_message "Failed to download wallet"
@@ -964,13 +972,6 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				echo "${CYAN}#####${NONE} Updating local wallet source code ${CYAN}#####${NONE}" && echo
 				# Change directory into existing repo
 				eval "cd ${SOURCE_DIR}"
-				# TEMP - Check if this is pre 1.3.6 source
-				if [ -n "$({ grep -rnw "src/version.h" -e 'static const int PROTOCOL_VERSION = 70912;'; })" ]; then
-					# Pre 1.3.6 source = Discard all changes and rebuild the entire source
-					eval "git checkout ."
-					INSTALL_DEPENDENCIES=1
-					BUILD_SOURCE=1
-				fi
 				# Pull the newest updates
 				exec 5>&1 && SOME_TEST=$(git pull 2>&1 | tee /dev/fd/5;)
 				# Check if the repo is already up to date
@@ -1121,6 +1122,10 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		echo '	if [ -n "${WAN_IP}" ]; then'
 		echo '		if [ ! -f /sys/class/net/${ETH_INTERFACE}/operstate ]; then'
 		echo '			ETH_INTERFACE="eth0"'
+		echo '		fi'
+		echo
+		echo '		if [ ! -f /sys/class/net/${ETH_INTERFACE}/operstate ]; then'
+		echo '			ETH_INTERFACE="enp0s3"'
 		echo '		fi'
 		echo
 		echo '		ETH_STATUS=$(cat /sys/class/net/${ETH_INTERFACE}/operstate)'
@@ -1293,8 +1298,11 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 			printf "\rSyncing: %s (?.?? %%)" "${CURRENT_BLOCKS}/?"
 			TOTAL_BLOCKS=$(curl -s -k "${BLOCKCOUNT_URL}")
 			SECONDS=0
+			LAST_BLOCKS="${CURRENT_BLOCKS}"
+			LAST_SECONDS=0
+			WALLET_STUCK=0
 			
-			while [ $CURRENT_BLOCKS -lt $TOTAL_BLOCKS ]; do
+			while [ $CURRENT_BLOCKS -lt $TOTAL_BLOCKS ] && [ $WALLET_STUCK -eq 0 ]; do
 				sleep 1
 				SECONDS=`expr $SECONDS + 1`
 				
@@ -1306,9 +1314,39 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				
 				CURRENT_BLOCKS=$(${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli -datadir=${HOME}/${DATA_INSTALL_DIR} getblockcount)
 				printf "\rSyncing: %s (%.2f %%)" "${CURRENT_BLOCKS}/${TOTAL_BLOCKS}" $(awk "BEGIN { print 100*${CURRENT_BLOCKS}/${TOTAL_BLOCKS} }")
+				
+				if [ "$LAST_BLOCKS" -eq "$CURRENT_BLOCKS" ]; then
+					# The block count hasn't moved since last check
+					LAST_SECONDS=`expr $LAST_SECONDS + 1`
+					
+					if [ "$LAST_SECONDS" -gt 60 ]; then
+						# The wallet is stuck
+						WALLET_STUCK=1
+					fi
+				else
+					# The block count is moving
+					LAST_BLOCKS="${CURRENT_BLOCKS}"
+					LAST_SECONDS=0
+				fi
+
 				wait
 			done
-			printf "\rSyncing: %s (%.2f %%)" "${TOTAL_BLOCKS}/${TOTAL_BLOCKS}" $(awk "BEGIN { print 100*${TOTAL_BLOCKS}/${TOTAL_BLOCKS} }") && echo
+
+			if [ $WALLET_STUCK -eq 0 ]; then
+				# Sync finished successfully
+				printf "\rSyncing: %s (%.2f %%)" "${TOTAL_BLOCKS}/${TOTAL_BLOCKS}" $(awk "BEGIN { print 100*${TOTAL_BLOCKS}/${TOTAL_BLOCKS} }") && echo
+			else
+				# Wallet is stuck and will not sync
+				printf "\rSyncing halted                                           " && echo
+				echo && echo "${ORANGE}#####${NONE} WARNING: Blockchain does not appear to be downloading ${ORANGE}#####${NONE}" && echo
+				echo "1) Check to ensure you are connected to the internet"
+				echo "2) If the block count still does not move after a few minutes then"
+				echo "   a full resync may be be necessary using the following cmds:"
+				echo "   ${WALLET_PREFIX}-cli stop"
+				echo "   ${WALLET_PREFIX}d -resync"
+				echo && echo -n "Press [ENTER] to continue"
+				read -p "" WALLET_STUCK
+			fi
 		else
 			# The block explorer isn't working
 			echo && echo "${ORANGE}#####${NONE} ${BLOCKCOUNT_URL} is down ${ORANGE}#####${NONE}"
