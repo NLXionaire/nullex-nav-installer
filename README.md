@@ -1,13 +1,10 @@
 # NulleX NAV Installer
 
 ### v1.0.7
-#### IMPORTANT NOTE 1:
-The original default/fastest method of installing a NAV wallet is by using precompiled binaries but this ability has been temporarily disabled due to the fact that official binaries have not yet been released for the linux wallet. Therefore the install process is temporarily defaulted to building the wallet from source, which takes significantly much more time and uses more hard drive space, etc. The default will be reverted back to the faster install process as soon as proper binaries can be procured.
-
-#### IMPORTANT NOTE 2:
+#### IMPORTANT NOTE:
 The install script was written with the ability to install multiple NAV's in parallel on the same VPS but the NulleX wallet specifically does not allow this configuration (yet). If and when a solution to this problem is discovered, this script already contains full support for running multiple NAV's on the same VPS and will "just work" if the wallets themselves can be updated to get around this problem.
 
-## General information
+## General Information
 
 A custom masternode install script made from scratch specifically for installing Nullex NAVs.
 
@@ -33,7 +30,7 @@ To save time on 2+ installs, the wallet binaries are archived in the wallet dire
 - Visualize the blockchain sync process after installation to ensure wallet(s) are all caught up with current block counts
 - Custom ascii art Nullex logo
 
-## Future features/Known issues
+## Future Features/Known Issues
 
 - Updating a previously installed wallet needs to remove previous settings before applying new settings
 - Updating a previously installed wallet needs to be smart enough to get the current configuration values instead of using 'new install' defaults
@@ -103,7 +100,7 @@ To save time on 2+ installs, the wallet binaries are archived in the wallet dire
      
      Usage Example: `sudo sh nullex-nav-installer.sh -c`
 
-## Recomended installation instructions:
+## Recomended Installation Instructions
 
 To begin, you must first download the initial script and give it execute permission with the following 2 commands:
 
@@ -145,7 +142,7 @@ sudo sh nullex-nav-installer.sh -n 5 -s -b
 
 **NOTE:** If you are installing multiple wallets, they do not need to be installed in any specific order although it is generally easier to install in numerical sequence (install 1 then 2 then 3, etc).
 
-## Update instructions:
+## Update Instructions
 
 At any point after the initial installation you can "refresh" a particular wallet install by re-running the following command:
 
@@ -159,7 +156,7 @@ If you would like to keep your wallet installed but just change one of the optio
 
 This would allow you to change an IPv6 installed wallet into an IPv4 wallet. **NOTE:** Changing options like this will most likely require you to reconfigure your cold wallet NulleX.conf and masternode.conf files. The 'Final setup instructions' are always displayed at the end of an update install the same way as they are for the initial install.
 
-## Uninstallation instructions:
+## Uninstallation Instructions
 
 #### Uninstall 1st/default wallet:
 
@@ -183,7 +180,7 @@ sudo sh nullex-nav-installer.sh -t u -n 5
 
 **NOTE:** You can uninstall any wallet at any time. They do not need to be uninstalled in any specific order.
 
-## Useful commands:
+## Useful Commands
 
 **NOTE:** To manually run commands (such as starting the wallet or running the '`stop`' or '`masternode status`' commands) on one of the 2+ installs you must reference the correct data directory.
 
@@ -265,4 +262,11 @@ nullex-cli2 -datadir=$HOME/.nullexqt2 masternode status
 nullex-cli3 -datadir=$HOME/.nullexqt3 masternode status
 nullex-cli4 -datadir=$HOME/.nullexqt4 masternode status
 nullex-cli5 -datadir=$HOME/.nullexqt5 masternode status
+```
+
+## Donate
+
+```
+NLX: AGyvdmGojLFbFpqM7XCSwzWM7zanX5Tbwx
+BTC: 1NpuD7EiFULUC944RvEd2AMJ6Xj13W1e7g
 ```
