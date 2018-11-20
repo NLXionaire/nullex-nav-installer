@@ -1,6 +1,6 @@
 # NulleX NAV Installer
 
-### v1.0.7
+### v1.0.8
 #### IMPORTANT NOTE:
 The install script was written with the ability to install multiple NAV's in parallel on the same VPS but the NulleX wallet specifically does not allow this configuration (yet). If and when a solution to this problem is discovered, this script already contains full support for running multiple NAV's on the same VPS and will "just work" if the wallets themselves can be updated to get around this problem.
 

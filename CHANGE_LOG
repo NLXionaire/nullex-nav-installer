@@ -1,3 +1,9 @@
+1.0.8 (November 20, 2018)
+-Added support for new wallet v1.3.9
+-Fixed a bug which caused building from source to fail
+-Fixed a bug which caused the downloaded archive directory to be extracted but not copied properly
+-Building from source now does a git checkout of the latest version instead of always building from the master source
+
 1.0.7 (November 16, 2018)
 -Added support for new wallet v1.3.8
 -Added a visual block explorer sync monitor at the end of the install

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Version: v1.0.7
-# Date:    November 16, 2018
+# Version: v1.0.8
+# Date:    November 20, 2018
 #
 # Run this script with the desired parameters or leave blank to install using defaults. Use -h for help.
 #
@@ -13,11 +13,11 @@
 # A special thank you to @marsmensch for releasing the NODEMASTER script which helped immensely for integrating IPv6 support
 
 # Global Variables
-readonly SCRIPT_VERSION="1.0.7"
+readonly SCRIPT_VERSION="1.0.8"
 readonly WALLET_URL_TEMPLATE="https://github.com/white92d15b7/NLX/releases/download/\${WALLET_VERSION}/"
 readonly SOURCE_URL="https://github.com/white92d15b7/NLX.git"
 readonly SOURCE_DIR="NLX"
-readonly ARCHIVE_DIR="nullex-1.3.8"
+readonly ARCHIVE_DIR_TEMPLATE="\${WALLET_PREFIX}-\${WALLET_VERSION}"
 readonly DEFAULT_WALLET_DIR="NulleX"
 readonly DEFAULT_DATA_DIR=".nullexqt"
 readonly WALLET_CONFIG_NAME="NulleX.conf"
@@ -44,7 +44,7 @@ readonly HOME_DIR="/usr/local/bin"
 readonly VERSION_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/VERSION"
 readonly SCRIPT_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/nullex-nav-installer.sh"
 readonly NEW_CHANGES_URL="https://raw.githubusercontent.com/NLXionaire/nullex-nav-installer/master/NEW_CHANGES"
-WALLET_VERSION="1.3.8"
+WALLET_VERSION="1.3.9"
 
 # Default variables
 NET_TYPE=6
@@ -65,6 +65,7 @@ WRITE_IP4_CONF=0
 WRITE_IP6_CONF=0
 GENERATE_GENKEY=0
 TEMP_NEW_DATA_DIRECTORY=0
+ARCHIVE_DIR=""
 
 # Functions
 error_message() {
@@ -148,6 +149,7 @@ help_menu() {
 begins_with() { case $2 in "$1"*) true;; *) false;; esac; }
 contains() { case $2 in *"$1"*) true;; *) false;; esac; }
 str_replace() { echo `echo $1 | sed 's/'"${2}"'/'"${3}"'/g'`; }
+count_occurances() { echo `echo "$1" | grep -o "$2" | wc -l`; }
 
 strindex() {
   x="${1%%$2*}"
@@ -377,6 +379,18 @@ online_wallet_check() {
 	
 	# Set the wallet archive filename based on the template
 	WALLET_FILE=$({ str_replace "$({ str_replace "${WALLET_FILE_TEMPLATE}" "\${WALLET_PREFIX}" "${WALLET_PREFIX}"; })" "\${WALLET_VERSION}" "${WALLET_VERSION}"; });
+
+	if [ "${ARCHIVE_DIR_TEMPLATE}" != "" ]; then
+		TEMP_WALLET_VERSION="${WALLET_VERSION}"
+		
+		if [ $(count_occurances "${TEMP_WALLET_VERSION}" "\.") -eq 3 ]; then
+			# Remove the last version number as it isn't being used in the wallet build currently
+			TEMP_WALLET_VERSION="${TEMP_WALLET_VERSION%\.*}"
+		fi
+		
+		# Set the archive directory based on the template
+		ARCHIVE_DIR=$({ str_replace "$({ str_replace "${ARCHIVE_DIR_TEMPLATE}" "\${WALLET_PREFIX}" "${WALLET_PREFIX}"; })" "\${WALLET_VERSION}" "${TEMP_WALLET_VERSION}"; });
+	fi
 }
 
 unregisterIP4Address() {
@@ -1042,6 +1056,8 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 				eval "./configure --with-libressl --without-gui"
 			fi
 
+			# Checkout a specific version
+			eval "git checkout ${WALLET_VERSION}"
 			# Make the files
 			eval "make"
 			echo && echo "${CYAN}#####${NONE} Finalizing build ${CYAN}#####${NONE}" && echo
@@ -1168,19 +1184,19 @@ if [ "$INSTALL_TYPE" = "Install" ]; then
 		# Ensure that the wallet automatically starts up after reboot
 		sed -e '$i '"${HOME_DIR}"'/'"${WALLET_INSTALL_DIR}"'/'"${REBOOT_SCRIPT_NAME}"' "'"${CURRENT_USER}"'" &' -i ${RC_LOCAL}
 	fi
-	
-	if [ "${ARCHIVE_DIR}" = "" ]; then
-		# Move extracted files from the home directory to the install directory
-		mv "${HOME}/${WALLET_PREFIX}d" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d"
-		mv "${HOME}/${WALLET_PREFIX}-cli" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli"
-	else
+
+	if [ "${ARCHIVE_DIR}" != "" ] && [ -d "${HOME}/${ARCHIVE_DIR}" ]; then
 		# Find the proper files from within the extracted directory and move them to the install directory
 		find ${HOME}/${ARCHIVE_DIR} -name "${WALLET_PREFIX}d" -type f -exec mv {} "${HOME_DIR}/${WALLET_INSTALL_DIR}/" \;
 		find ${HOME}/${ARCHIVE_DIR} -name "${WALLET_PREFIX}-cli" -type f -exec mv {} "${HOME_DIR}/${WALLET_INSTALL_DIR}/" \;
 		# Remove extracted directory
 		rm -rf "${HOME}/${ARCHIVE_DIR}"
+	else
+		# Move extracted files from the home directory to the install directory
+		mv "${HOME}/${WALLET_PREFIX}d" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d"
+		mv "${HOME}/${WALLET_PREFIX}-cli" "${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}-cli"
 	fi
-	
+
 	# Create easier links to the wallet files
 	if [ "$INSTALL_NUM" -eq 1 ]; then
 		ln -s ${HOME_DIR}/${WALLET_INSTALL_DIR}/${WALLET_PREFIX}d ${HOME_DIR}/${WALLET_PREFIX}d

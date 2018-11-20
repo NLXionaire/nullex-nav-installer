@@ -1,6 +1,4 @@
--Added support for new wallet v1.3.8
--Added a visual block explorer sync monitor at the end of the install
--Fixed and improved the online wallet check that automaticaly detects and installs new wallet versions without waiting for an updated script
--Fix for locked files during operating system update checks
--The wallet url is now tested before downloading and if the file is not available the installer automatically defaults to install from source
--Added support for interface enp0s3
+-Added support for new wallet v1.3.9
+-Fixed a bug which caused building from source to fail
+-Fixed a bug which caused the downloaded archive directory to be extracted but not copied properly
+-Building from source now does a git checkout of the latest version instead of always building from the master source
